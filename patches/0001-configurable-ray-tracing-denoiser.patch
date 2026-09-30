@@ -1,0 +1,31 @@
+diff --git a/envs/_base_task.py b/envs/_base_task.py
+index 301da9f..29c4a4c 100644
+--- a/envs/_base_task.py
++++ b/envs/_base_task.py
+@@ -214,7 +214,9 @@ class Base_Task(gym.Env):
+         sapien.render.set_camera_shader_dir("rt")
+         sapien.render.set_ray_tracing_samples_per_pixel(32)
+         sapien.render.set_ray_tracing_path_depth(8)
+-        sapien.render.set_ray_tracing_denoiser("oidn")
++        sapien.render.set_ray_tracing_denoiser(
++            os.environ.get("ROBOTWIN_RAY_TRACING_DENOISER", "oidn")
++        )
+ 
+         # declare sapien scene
+         scene_config = sapien.SceneConfig()
+diff --git a/scripts/test_render.py b/scripts/test_render.py
+index 3897dc0..a2184cd 100644
+--- a/scripts/test_render.py
++++ b/scripts/test_render.py
+@@ -48,7 +48,9 @@ class Sapien_TEST(gym.Env):
+         sapien.render.set_camera_shader_dir("rt")
+         sapien.render.set_ray_tracing_samples_per_pixel(32)
+         sapien.render.set_ray_tracing_path_depth(8)
+-        sapien.render.set_ray_tracing_denoiser("oidn")
++        sapien.render.set_ray_tracing_denoiser(
++            os.environ.get("ROBOTWIN_RAY_TRACING_DENOISER", "oidn")
++        )
+ 
+         # declare sapien scene
+         scene_config = sapien.SceneConfig()
+
