@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "task": "stack_blocks_two",
+  "policy": "ACT",
+  "embodiment": "aloha_agilex",
+  "action_type": "joint",
+  "instruction_type": "seen",
+  "runs": [
+    {
+      "dataset": "demo_smoke",
+      "target_episodes": 3,
+      "evaluation_success_rate": 0.0,
+      "evaluation_timestamp": "2026-09-30_00-17-10_514569"
+    },
+    {
+      "dataset": "demo_train20",
+      "target_episodes": 20,
+      "evaluation_success_rate": 0.0,
+      "evaluation_timestamp": "2026-09-30_09-47-14_994736"
+    }
+  ]
+}
+
