@@ -1,0 +1,18 @@
+schema_version: 1
+recorded_at: "2026-09-30"
+
+robotwin:
+  repository: https://github.com/RoboTwin-Platform/RoboTwin.git
+  branch: main
+  commit: 30954692d06ba7e89f7a6b76064f4062c488fa81
+
+xpolicylab:
+  repository: https://github.com/XPolicyLab/XPolicyLab.git
+  branch: main
+  commit: a9ccf8dbc34ad047534a14b7ee0503bddf0e54b5
+
+local_changes:
+  - patches/0001-configurable-ray-tracing-denoiser.patch
+  - configs/demo_smoke.yml
+  - configs/demo_train20.yml
+

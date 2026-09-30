@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+config.local.*
+
+# RoboTwin assets and generated data
+assets/
+data/
+datasets/
+model_cache/
+checkpoints/
+weights/
+wandb/
+eval_result/
+eval_video/
+outputs/
+runs/
+
+# Large model/data/media artifacts
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+*.hdf5
+*.h5
+*.zarr
+*.npz
+*.zip
+*.tar
+*.tar.gz
+*.mp4
+*.mov
+
+# Runtime files
+*.pid
+*.log
+viewer_show.*
+
+# Allow deliberately curated small media
+!results/figures/*.png
+!results/figures/*.jpg
+!results/short_videos/README.md
+
