@@ -1,0 +1,1497 @@
+diff --git a/data/recheck_20261004/audit.py b/data/recheck_20261004/audit.py
+new file mode 100644
+--- /dev/null
++++ b/data/recheck_20261004/audit.py
+@@ -0,0 +1,83 @@
++"""Read-only audit of all local raw/processed trajectories and recorded rollouts."""
++from pathlib import Path
++import sys, json, hashlib, collections
++import numpy as np
++import h5py, cv2
++ROOT = Path('${ROBOTWIN_ROOT}')
++sys.path.insert(0, str(ROOT))
++from XPolicyLab.utils.process_data import decode_image_bit
++OUT = Path(__file__).parent
++CAMS = ['cam_head','cam_right_wrist','cam_left_wrist']
++def dump(name, obj):
++    (OUT/name).write_text(json.dumps(obj, indent=2, ensure_ascii=False)+'\n')
++def packed(f, kind):
++    return np.concatenate([f[f'{kind}/{s}_{p}_joint_states'][:] for s in ['left','right'] for p in ['arm','ee']], axis=1)
++rows=[]; decoded_cache={}
++for path in sorted((ROOT/'data').rglob('*.hdf5')):
++    row={'path':str(path.relative_to(ROOT)), 'errors':[]}
++    try:
++        with h5py.File(path,'r') as f:
++            q,a=packed(f,'state'),packed(f,'action');n=len(a)
++            row.update(length=n,action_dim=a.shape[1],trajectory_sha256=hashlib.sha256(q.tobytes()+a.tobytes()).hexdigest(),
++                       finite=bool(np.isfinite(q).all() and np.isfinite(a).all()),
++                       action_next_state_max_error=float(np.abs(a[:-1]-q[1:]).max()),
++                       frequency=int(f['additional_info/frequency'][()]) if 'additional_info/frequency' in f else None,
++                       gripper_range=[float(a[:,[6,13]].min()),float(a[:,[6,13]].max())])
++            bad_numeric=[]
++            def check_numeric(k,v):
++                if isinstance(v,h5py.Dataset) and v.dtype.kind in 'fci' and not np.isfinite(v[: ] if v.shape else v[()]).all(): bad_numeric.append(k)
++            f.visititems(check_numeric);row['nonfinite_numeric_datasets']=bad_numeric
++            events=sorted([{'t':int(t),'arm':s} for s,j in [('L',6),('R',13)] for t in np.where((a[:-1,j]>.5)&(a[1:,j]<=.5))[0]+1],key=lambda e:e['t'])
++            row['closure_events']=events;row['mode']=''.join(e['arm'] for e in events)
++            digest=row['trajectory_sha256'];is_stack='stack_blocks_two' in str(path)
++            # Full decode for unique stacking trajectories; three samples/camera for the unrelated hammer task.
++            if digest not in decoded_cache:
++                count=0;shapes=set()
++                for cam in f['vision']:
++                    ds=f[f'vision/{cam}/colors'];assert len(ds)==n
++                    ts=range(n) if is_stack else sorted(set([0,n//2,n-1]))
++                    for t in ts:
++                        img=decode_image_bit(ds[t]);assert img.ndim==3 and img.shape[-1]==3
++                        shapes.add(tuple(img.shape));count+=1
++                decoded_cache[digest]={'images_decoded':count,'image_shapes':sorted(shapes),'full_decode':is_stack,'decoded_from':row['path']}
++            row['image_check']=decoded_cache[digest]
++            bench=path.relative_to(ROOT/'data').parts[0];ep=int(path.stem.split('_')[-1])
++            proc=ROOT/f'XPolicyLab/policy/ACT/processed_data/{bench}/stack_blocks_two/aloha_agilex-joint/episode_{ep}.hdf5'
++            if is_stack and '/staging/' not in str(path) and proc.exists():
++                with h5py.File(proc) as p:
++                    assert np.array_equal(p['action'][:],a) and np.array_equal(p['observations/qpos'][:],q)
++                    row['action_start_offset']=int(p.attrs.get('action_start_offset',-999))
++                    row['sim']=bool(p.attrs.get('sim',False));err=0;cnt=0
++                    for cam in CAMS:
++                        ds=p[f'observations/images/{cam}'];assert ds.shape==(n,480,640,3)
++                        for t in sorted(set([0,n//2,n-1]+[max(0,e['t']-5) for e in events])):
++                            rgb=cv2.resize(decode_image_bit(f[f'vision/{cam}/colors'][t]),(640,480))
++                            err=max(err,int(np.abs(rgb.astype(int)-ds[t].astype(int)).max()));cnt+=1
++                    row.update(processed_images_checked=cnt,processed_rgb_max_error=err,processed_numeric_equal=True)
++            row['max_arm_increment_deg']=float(np.abs(np.diff(a[:,[0,1,2,3,4,5,7,8,9,10,11,12]],axis=0)).max()*180/np.pi)
++    except Exception as e:row['errors'].append(repr(e))
++    rows.append(row)
++    if len(rows)%10==0:print('RAW',len(rows),flush=True)
++groups=collections.defaultdict(list)
++for r in rows:groups[r.get('trajectory_sha256',r['path'])].append(r['path'])
++dump('trajectory_audit.json',{'rows':rows,'raw_files':len(rows),'unique_state_action_trajectories':len(groups),'duplicate_groups':[v for v in groups.values() if len(v)>1], 'errors':[r for r in rows if r['errors']], 'scope':'Every raw file: all numeric arrays. Unique stacking state/action trajectories: every RGB frame decoded once; duplicates reuse this image check, not byte identity. Processed RGB checked at endpoints, midpoint and pre-closure frames only. Hammer RGB sampled.'})
++print('RAW COMPLETE',len(rows),'unique',len(groups),flush=True)
++rollouts=[]
++for path in sorted((ROOT/'data').rglob('object_trace.jsonl')):
++    rs=[json.loads(s) for s in path.read_text().splitlines() if s.strip()]
++    if not rs:continue
++    obj=np.array([[r['red'],r['green']] for r in rs]);lift=(obj[:,:,2]-obj[0,:,2])*100
++    sep=np.abs(obj[:,1]-obj[:,0]-[0,0,.05]);geom=np.all(sep<[.025,.025,.012],axis=1)
++    row={'path':str(path.relative_to(ROOT)),'records':len(rs),'last_step':rs[-1].get('step'),'success':any(r.get('success',False) for r in rs),
++         'max_lift_cm':lift.max(0).tolist(),'frames_above_3cm':(lift>3).sum(0).tolist(),
++         'first_above_3cm':[next((rs[i].get('step') for i in range(len(rs)) if lift[i,j]>3),None) for j in range(2)],
++         'ever_stack_geometry':bool(geom.any()),'final_red_target_xy_cm':float(np.linalg.norm(obj[-1,0,:2]-[0,-.13])*100),
++         'initial_positions':obj[0].tolist(),'final_positions':obj[-1].tolist()}
++    rollouts.append(row)
++dump('rollout_audit.json',{'rows':rollouts,'note':'Includes partial attempts and duplicate reruns; this is an inventory, not a pooled success-rate denominator. Height is not proof of secure grasp.'})
++training=[]
++for path in sorted((ROOT/'XPolicyLab/policy/ACT/checkpoints').glob('*/training_metrics.jsonl')):
++    rs=[json.loads(s) for s in path.read_text().splitlines() if s.strip()];tail=rs[-200:]
++    training.append({'run':path.parent.name,'epochs_recorded':len(rs),'last':rs[-1], 'last200_train_l1':float(np.mean([r['train']['l1'] for r in tail])), 'last200_val_l1':float(np.mean([r['validation_before_epoch']['l1'] for r in tail])), 'last200_kl':float(np.mean([r['train']['kl'] for r in tail])), 'finite':all(np.isfinite(r['train']['loss']) and np.isfinite(r['validation_before_epoch']['loss']) for r in rs)})
++dump('training_audit.json',training)
++print(json.dumps(training,indent=2),flush=True)
+diff --git a/data/recheck_20261004/phase_probe.py b/data/recheck_20261004/phase_probe.py
+new file mode 100644
+--- /dev/null
++++ b/data/recheck_20261004/phase_probe.py
+@@ -0,0 +1,43 @@
++"""CPU, strict checkpoint load; fixed expert observations at closure -10 and 0."""
++from pathlib import Path
++import sys,os,json,pickle,time
++from argparse import Namespace
++import numpy as np,h5py,torch,yaml
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R));O=Path(__file__).parent
++os.environ['TORCH_HOME']=str(R/'data/model_cache/torch');os.environ['ACT_ACTION_DIM']='14'
++torch.set_num_threads(4);torch.manual_seed(0)
++from XPolicyLab.policy.ACT.detr.models import build_ACT_model
++configs=[R/'data/demo_train20/diagnose4000_20261004/act_eval_config.yml',R/'data/demo_train50/train2000_20261004_171920/evaluation/act_eval_config.yml']
++audit=json.loads((O/'trajectory_audit.json').read_text())['rows'];results=[]
++mean=torch.tensor([.485,.456,.406]).reshape(1,1,3,1,1);std=torch.tensor([.229,.224,.225]).reshape(1,1,3,1,1)
++for config in configs:
++    cfg=yaml.safe_load(config.read_text());ckpt=Path(cfg['ckpt_dir']);tc=json.loads((ckpt/'training_config.json').read_text());bench=tc['ckpt_setting'].split('-')[0]
++    model=build_ACT_model(Namespace(**cfg));weights=torch.load(ckpt/'policy_last.ckpt',map_location='cpu',weights_only=True)
++    model.load_state_dict({k.removeprefix('model.'):v for k,v in weights.items()},strict=True);model.eval()
++    with open(ckpt/'dataset_stats.pkl','rb') as f:s=pickle.load(f)
++    episodes=[r for r in audit if r['path'].startswith('data/'+bench+'/stack_blocks_two/')]
++    start=time.monotonic()
++    for ep in episodes:
++        i=int(Path(ep['path']).stem.split('_')[-1]);split='train' if i in tc['train_episode_ids'] else 'validation'
++        with h5py.File(Path(tc['dataset_dir'])/f'episode_{i}.hdf5') as f:
++            for color,event in zip(['red','green'],ep['closure_events']):
++                j=0 if event['arm']=='L' else 7
++                for offset in [-10,0]:
++                    t=event['t']+offset
++                    ims=np.stack([f['observations/images/'+cam][t] for cam in cfg['camera_names']])
++                    im=torch.from_numpy(np.ascontiguousarray(ims.transpose(0,3,1,2))).float()[None]/255
++                    q=torch.from_numpy((f['observations/qpos'][t]-s['qpos_mean'])/s['qpos_std']).float()[None]
++                    with torch.inference_mode():pred=model(q,(im-mean)/std,None)[0][0].numpy()
++                    raw=pred*s['action_std']+s['action_mean'];target=f['action'][t:t+50];err=np.abs(raw[:len(target)]-target)
++                    results.append(dict(run=bench,episode=i,split=split,color=color,mode=ep['mode'],offset=offset,active_first_deg=float(err[0,j:j+6].mean()*180/np.pi),active_chunk_deg=float(err[:,j:j+6].mean()*180/np.pi),gripper_mae=float(err[:,j+6].mean()),first_gripper=float(raw[0,j+6]),target_gripper=float(target[0,j+6])))
++        print(bench,i,round(time.monotonic()-start,1),flush=True)
++    del model,weights
++summary=[]
++for run in ['demo_train20','demo_train50']:
++    for subset in ['all','original20']:
++        for split in ['train','validation']:
++            for color in ['red','green']:
++                rs=[r for r in results if r['run']==run and r['split']==split and r['color']==color and (subset=='all' or r['episode']<20)]
++                summary.append(dict(run=run,subset=subset,split=split,color=color,n=len(rs),**{k:float(np.mean([r[k] for r in rs])) for k in ['active_first_deg','active_chunk_deg','gripper_mae']}))
++(O/'phase_probe.json').write_text(json.dumps(dict(summary=summary,rows=results,note='CPU inference, strict full state_dict load. Fixed observations at closure -10 and 0. Not directly comparable to prior four-offset probes. Expert-state accuracy is not closed-loop success.'),indent=2))
++print(json.dumps(summary,indent=2),flush=True)
+diff --git a/data/recheck_20261004/visuals.py b/data/recheck_20261004/visuals.py
+new file mode 100644
+--- /dev/null
++++ b/data/recheck_20261004/visuals.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++import json,sys
++import h5py,cv2,numpy as np
++from PIL import Image,ImageDraw
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R))
++from XPolicyLab.utils.process_data import decode_image_bit
++O=Path(__file__).parent
++for start in (0,25):
++ out=Image.new('RGB',(1600,5*264),'white');d=ImageDraw.Draw(out)
++ for k in range(25):
++  ep=start+k
++  with h5py.File(R/f'data/demo_train50/stack_blocks_two/aloha_agilex/data/episode_{ep:07d}.hdf5') as f:im=decode_image_bit(f['vision/cam_head/colors'][-1])
++  x=k%5*320;y=k//5*264;out.paste(Image.fromarray(im),(x,y+24));d.text((x+5,y+5),f'Episode {ep}: last saved observation',fill='black')
++ out.save(O/f'expert_final_{start:02d}.jpg')
++paths=[('20demo2000','data/demo_train20/eval5_serial_20260930_113258/results.json'),('20demo4000','data/demo_train20/compare4000_20261004_112100/unseen_five/results.json'),('50demo2000','data/demo_train50/train2000_20261004_171920/evaluation/results.json')]
++for label,path in paths:
++ out=Image.new('RGB',(1600,5*264),'white');d=ImageDraw.Draw(out)
++ for row,case in enumerate(json.loads((R/path).read_text())['cases']):
++  cap=cv2.VideoCapture(case['video'])
++  for col,t in enumerate([50,100,200,350,799]):
++   cap.set(cv2.CAP_PROP_POS_FRAMES,t);ok,bgr=cap.read();assert ok
++   out.paste(Image.fromarray(cv2.cvtColor(bgr,cv2.COLOR_BGR2RGB)),(col*320,row*264+24))
++   d.text((col*320+3,row*264+5),f"Seed {case['scene_seed']} / frame {t}",fill='black')
++  cap.release()
++ out.save(O/f'{label}_rollouts.jpg')
+diff --git a/data/recheck_20261005/phase_probe.py b/data/recheck_20261005/phase_probe.py
+new file mode 100644
+--- /dev/null
++++ b/data/recheck_20261005/phase_probe.py
+@@ -0,0 +1,41 @@
++"""CPU, strict checkpoint load; fixed expert observations at closure -10 and 0."""
++from pathlib import Path
++import sys,os,json,pickle,time
++from argparse import Namespace
++import numpy as np,h5py,torch,yaml
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R));O=Path(__file__).parent
++os.environ['TORCH_HOME']=str(R/'data/model_cache/torch');os.environ['ACT_ACTION_DIM']='14'
++torch.set_num_threads(4);torch.manual_seed(0)
++from XPolicyLab.policy.ACT.detr.models import build_ACT_model
++configs=[R/'data/demo_train50/train4000_20261004_232142/evaluation/act_eval_config.yml']
++audit=json.loads((R/'data/recheck_20261004/trajectory_audit.json').read_text())['rows'];results=[]
++mean=torch.tensor([.485,.456,.406]).reshape(1,1,3,1,1);std=torch.tensor([.229,.224,.225]).reshape(1,1,3,1,1)
++for config in configs:
++    cfg=yaml.safe_load(config.read_text());ckpt=Path(cfg['ckpt_dir']);tc=json.loads((ckpt/'training_config.json').read_text());bench=tc['ckpt_setting'].split('-')[0]
++    model=build_ACT_model(Namespace(**cfg));weights=torch.load(ckpt/'policy_last.ckpt',map_location='cpu',weights_only=True)
++    model.load_state_dict({k.removeprefix('model.'):v for k,v in weights.items()},strict=True);model.eval()
++    ref=np.load(ckpt/'checkpoint_reference.npz')
++    with torch.inference_mode(): ref_pred=model(torch.from_numpy(ref['qpos']),(torch.from_numpy(ref['images'])-mean)/std,None)[0].numpy()
++    ref_error=float(np.max(np.abs(ref_pred-ref['actions'])))
++    (O/'cpu_reference_check.json').write_text(json.dumps({'max_abs_error':ref_error,'tolerance':0.001}))
++    assert ref_error < 0.001
++    with open(ckpt/'dataset_stats.pkl','rb') as f:s=pickle.load(f)
++    episodes=[r for r in audit if r['path'].startswith('data/'+bench+'/stack_blocks_two/')]
++    start=time.monotonic()
++    episodes=episodes[int(os.environ.get('PROBE_BEGIN','0')):int(os.environ.get('PROBE_END','50'))]
++    for ep in episodes:
++        i=int(Path(ep['path']).stem.split('_')[-1]);split='train' if i in tc['train_episode_ids'] else 'validation'
++        with h5py.File(Path(tc['dataset_dir'])/f'episode_{i}.hdf5') as f:
++            for color,event in zip(['red','green'],ep['closure_events']):
++                j=0 if event['arm']=='L' else 7
++                for offset in [-10,0]:
++                    t=event['t']+offset
++                    ims=np.stack([f['observations/images/'+cam][t] for cam in cfg['camera_names']])
++                    im=torch.from_numpy(np.ascontiguousarray(ims.transpose(0,3,1,2))).float()[None]/255
++                    q=torch.from_numpy((f['observations/qpos'][t]-s['qpos_mean'])/s['qpos_std']).float()[None]
++                    with torch.inference_mode():pred=model(q,(im-mean)/std,None)[0][0].numpy()
++                    raw=pred*s['action_std']+s['action_mean'];target=f['action'][t:t+50];err=np.abs(raw[:len(target)]-target)
++                    results.append(dict(run=bench,episode=i,split=split,color=color,mode=ep['mode'],offset=offset,active_first_deg=float(err[0,j:j+6].mean()*180/np.pi),active_chunk_deg=float(err[:,j:j+6].mean()*180/np.pi),gripper_mae=float(err[:,j+6].mean()),first_gripper=float(raw[0,j+6]),target_gripper=float(target[0,j+6])))
++        print(bench,i,round(time.monotonic()-start,1),flush=True)
++    del model,weights
++(O/f"phase_rows_{os.environ.get('PROBE_BEGIN','0')}.json").write_text(json.dumps(results,indent=2))
+diff --git a/data/vision_diagnosis_20261005/analyze_live.py b/data/vision_diagnosis_20261005/analyze_live.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/analyze_live.py
+@@ -0,0 +1,45 @@
++from pathlib import Path
++import json,numpy as np
++from PIL import Image,ImageDraw
++from vision_utils import detect,project
++O=Path(__file__).parent;CAMS=['cam_head','cam_right_wrist','cam_left_wrist'];out=[];visibility=[]
++for seed,case_idx in [(300000,2),(200000,1)]:
++    directory=O/f'seed{seed}'
++    if not (directory/'run.json').exists():continue
++    rows=[json.loads(s) for s in (directory/'trace.jsonl').read_text().splitlines()];n=len(rows)
++    command=np.array([r['after']['qpos_command'] for r in rows]);actual=np.array([r['after']['qpos_actual'] for r in rows]);err=np.abs(command-actual)*180/np.pi
++    arm_ids=[0,1,2,3,4,5,7,8,9,10,11,12]
++    original=[json.loads(s) for s in (O.parent/f'demo_train50/train4000_20261004_232142/evaluation/case_{case_idx}_attempt_1/object_trace.jsonl').read_text().splitlines()]
++    newobj=np.array([[r['after']['red'],r['after']['green']] for r in rows]);oldobj=np.array([[r['red'],r['green']] for r in original[1:n+1]])
++    summary={'seed':seed,'steps':n,'original_object_pose_max_error_cm':float(np.abs(newobj-oldobj).max()*100),'mean_arm_tracking_error_deg':float(err[:,arm_ids].mean()),'max_arm_tracking_error_deg':float(err[:,arm_ids].max()),'closure_events':[]}
++    for side,j in [('left',6),('right',13)]:
++        closures=np.where((command[:-1,j]>.5)&(command[1:,j]<=.5))[0]+1
++        for t in closures:
++            color='red' if t<170 else 'green';r=rows[t]['after'];delta=(np.array(r[side+'_tcp'][:3])-r[color])*100
++            window=range(int(t),min(n,int(t)+25));dist=[np.linalg.norm((np.array(rows[k]['after'][side+'_tcp'][:3])-rows[k]['after'][color])[:2])*100 for k in window]
++            nearest=min(window,key=lambda k:dist[k-int(t)]);nr=rows[nearest]['after'];d=(np.array(nr[side+'_tcp'][:3])-nr[color])*100
++            summary['closure_events'].append({'step_zero_based':int(t),'side':side,'heuristic_phase_target':color,'tcp_minus_block_cm':delta.tolist(),'xy_error_cm':float(np.linalg.norm(delta[:2])),'active_arm_tracking_error_deg':float(err[t,(0 if j==6 else 7):(6 if j==6 else 13)].mean()),'nearest_xy_during_next25_step':nearest,'nearest_xy_error_cm':float(np.linalg.norm(d[:2])),'nearest_tcp_delta_cm':d.tolist(),'nearest_command_opening':float(nr['qpos_command'][j]),'finger_actual':r[side+'_finger_actual'],'finger_target':r[side+'_finger_targets']})
++    out.append(summary)
++    for file in sorted((directory/'snapshots').glob('*.npz')):
++        z=np.load(file);step=int(file.stem)
++        for cam in CAMS:
++            for color in ['red','green']:
++                visible=detect(z[cam],color);proj=project(z[color],z[cam+'_K'],z[cam+'_E']);cent=visible['centroid']
++                visibility.append({'seed':seed,'step':step,'camera':cam,'color':color,**visible,'projected_center':proj,'visible_centroid_vs_true_center_px':float(np.linalg.norm(np.array(cent)-proj)) if cent and proj else None})
++    ts=[50,60,70,80] if seed==300000 else [50,80,200,230,250,270]
++    montage=Image.new('RGB',(960,len(ts)*264),'white');draw=ImageDraw.Draw(montage)
++    for row,t in enumerate(ts):
++        z=np.load(directory/'snapshots'/f'{t:04d}.npz');color='red' if t<170 else 'green';side='right' if color=='red' else 'left'
++        for col,cam in enumerate(CAMS):
++            im=Image.fromarray(z[cam]);d=ImageDraw.Draw(im);det=detect(z[cam],color)
++            if det['bbox']:d.rectangle(det['bbox'],outline='yellow',width=2)
++            center=project(z[color],z[cam+'_K'],z[cam+'_E']);tcp=project(z[side+'_tcp'],z[cam+'_K'],z[cam+'_E'])
++            for p,fill,shape in [(center,'white','plus'),(tcp,'cyan','x')]:
++                if p:
++                    x,y=p;d.line((x-5,y,x+5,y),fill=fill,width=2);d.line((x,y-5,x,y+5),fill=fill,width=2)
++            if center and tcp:d.line((*center,*tcp),fill='cyan',width=1)
++            montage.paste(im,(col*320,row*264+24));draw.text((col*320+3,row*264+5),f'{t}: {color} / {cam}',fill='black')
++    montage.save(directory/'annotated_views.jpg')
++(O/'live_geometry.json').write_text(json.dumps({'cases':out,'notes':['Closure events are downward crossings of commanded opening 0.5, not confirmed contact events. Target color by phase is heuristic (red before step 170). TCP is robot-defined gripper center in world coordinates.','Tracking differences measured at action boundaries, not every physics substep. Finger actual positions and targets recorded separately; qpos_actual final gripper entries are commanded opening, not actual aperture.']},indent=2))
++(O/'live_visibility.json').write_text(json.dumps(visibility,indent=2))
++print(json.dumps(out,indent=2))
+diff --git a/data/vision_diagnosis_20261005/audit_visibility.py b/data/vision_diagnosis_20261005/audit_visibility.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/audit_visibility.py
+@@ -0,0 +1,22 @@
++from pathlib import Path
++import sys,json,collections
++import h5py,numpy as np
++from PIL import Image,ImageDraw
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R));O=Path(__file__).parent
++from XPolicyLab.utils.process_data import decode_image_bit
++from vision_utils import detect,project
++CAMS=['cam_head','cam_right_wrist','cam_left_wrist'];raw=R/'data/demo_train50/stack_blocks_two/aloha_agilex/data'
++audit=json.loads((R/'data/recheck_20261004/trajectory_audit.json').read_text())['rows'];rows=[]
++audit=[r for r in audit if r['path'].startswith('data/demo_train50/stack_blocks_two/')]
++for ep in audit:
++    idx=int(Path(ep['path']).stem.split('_')[-1])
++    with h5py.File(raw/f'episode_{idx:07d}.hdf5') as f:
++        phases=[('initial',0,'red')]+[(color+'_'+str(off),e['t']+off,color) for color,e in zip(['red','green'],ep['closure_events']) for off in [-10,0]]
++        for phase,t,target in phases:
++            for cam in CAMS:
++                rgb=decode_image_bit(f[f'vision/{cam}/colors'][t]);rows.append({'episode':idx,'phase':phase,'t':t,'camera':cam,'target':target,**detect(rgb,target)})
++summary=[]
++for phase in sorted(set(r['phase'] for r in rows)):
++    for cam in CAMS:
++        rs=[r for r in rows if r['phase']==phase and r['camera']==cam];summary.append({'phase':phase,'camera':cam,'n':len(rs),'visible_20pixels':sum(r['pixels']>=20 for r in rs),'median_pixels':float(np.median([r['pixels'] for r in rs])),'border_components':sum(r['touches_border'] for r in rs)})
++(O/'expert_visibility.json').write_text(json.dumps({'summary':summary,'rows':rows,'method':'HSV connected components on raw 320x240 RGB. This tests image visibility, not whether ACT detects the object. Occlusion can split components. Threshold is an audit heuristic.'},indent=2));print(json.dumps(summary,indent=2))
+diff --git a/data/vision_diagnosis_20261005/compare_cached.py b/data/vision_diagnosis_20261005/compare_cached.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/compare_cached.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++import sys,os,json
++import numpy as np
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R));O=Path(__file__).parent
++os.environ['ROBOTWIN_RAY_TRACING_DENOISER']='none'
++import serial_camera
++import scripts.eval_policy_xpolicylab as ev
++from envs.stack_blocks_two import stack_blocks_two
++import transforms3d as t3d
++args,_=ev.load_task_args({'task_name':'stack_blocks_two','task_config':'demo_smoke','policy_name':'ACT'})
++args.update(eval_mode=True,save_data=False,render_freq=0)
++task=stack_blocks_two();task.setup_demo(now_ep_num=0,seed=200000,is_test=True,**args)
++robot=task.robot;entity=robot.left_entity;joint=robot.left_ee;active=entity.get_active_joints();pin=entity.create_pinocchio_model();idx=entity.get_links().index(joint.child_link);full=entity.get_qpos().copy()
++def fk(arm):
++    qs=full.copy()
++    for k,aj in enumerate(robot.left_arm_joints):qs[active.index(aj)]=arm[k]
++    pin.compute_forward_kinematics(qs);ee=entity.get_root_pose()*pin.get_link_pose(idx)*joint.get_pose_in_child()
++    rot=t3d.quaternions.quat2mat(ee.q)@robot.left_global_trans_matrix@robot.left_delta_matrix
++    return ee.p+rot@np.array([robot.left_gripper_bias,0,0])
++snap=np.load(O/'seed200000/snapshots/0230.npz');validation=float(np.max(np.abs(fk(snap['qpos_actual'][:6])-snap['left_tcp'][:3])));assert validation<1e-5,validation
++fresh=np.load(O/'seed200000_fine_fk/fine_baseline.npz');trace=[json.loads(x) for x in (O/'seed200000/trace.jsonl').read_text().splitlines()];rows=[]
++for t in [230,240,249]:
++    cached=np.array(trace[t]['action']);i=t-230
++    rows.append({'step':t,'cached_query_step':trace[t]['model_query_step'],'fresh_query_step':230,'cached_tcp_minus_frozen_block_cm':((fk(cached[:6])-fresh['block'])*100).tolist(),'fresh_tcp_minus_frozen_block_cm':((fresh['tcp'][i]-fresh['block'])*100).tolist(),'cached_gripper_command':float(cached[6]),'fresh_gripper_command':float(fresh['pred'][i,6])})
++result={'fk_validation_max_error_m':validation,'rows':rows,'note':'Same frozen block at step 230 and robot geometry for forward kinematics. Fresh chunk is a counterfactual prediction, not executed; success not established.'};(O/'cached_vs_fresh.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2));task.close_env()
+diff --git a/data/vision_diagnosis_20261005/plot_fine.py b/data/vision_diagnosis_20261005/plot_fine.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/plot_fine.py
+@@ -0,0 +1,19 @@
++from pathlib import Path
++import json,os
++os.environ['MPLCONFIGDIR']='/tmp/robotwin-matplotlib'
++import matplotlib;matplotlib.use('Agg')
++import matplotlib.pyplot as plt
++O=Path(__file__).parent
++fig,axs=plt.subplots(2,2,figsize=(9,7),sharex=True,sharey=True)
++for row,(seed,label) in enumerate([(300000,'Red: failed first grasp'),(200000,'Green: failed second grasp')]):
++    d=json.loads((O/f'seed{seed}_fine_fk/fine_probe.json').read_text())
++    for col,axis in enumerate(['x','y']):
++        rows=[r for r in d['rows'] if r['axis']==axis]
++        xs=[r['shift_cm'] for r in rows];ys=[r['predicted_tcp_shift_at_closure_cm'][col] for r in rows]
++        xs.insert(2,0);ys.insert(2,0)
++        ax=axs[row,col];ax.plot([-2,2],[-2,2],'--',color='gray',label='Equal translation');ax.plot(xs,ys,'o-',label='ACT prediction');ax.axhline(0,color='lightgray',lw=.7);ax.axvline(0,color='lightgray',lw=.7);ax.set_title(f'{label}\n{axis.upper()} direction');ax.grid(alpha=.2);ax.set_xlim(-2.3,2.3);ax.set_ylim(-2.8,2.8)
++        if row==1:ax.set_xlabel('Actual block translation (cm)')
++        if col==0:ax.set_ylabel('Predicted TCP translation (cm)')
++axs[0,0].legend(fontsize=9)
++fig.suptitle('Frozen robot, coherent rerendering of all three cameras\nSame prediction index compared before/after each block translation',fontsize=11)
++fig.tight_layout(rect=(0,0,1,.91));fig.savefig(O/'fine_localization.png',dpi=160)
+diff --git a/data/vision_diagnosis_20261005/probe_vision.py b/data/vision_diagnosis_20261005/probe_vision.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/probe_vision.py
+@@ -0,0 +1,66 @@
++"""Vision sensitivity checks with fixed qpos, using the unchanged 4000-epoch policy."""
++from pathlib import Path
++from argparse import Namespace
++import os,sys,json,pickle,time
++import numpy as np,h5py,torch,yaml,cv2
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R));O=Path(__file__).parent
++from vision_utils import detect,mask_color
++from XPolicyLab.utils.process_data import get_action_dim
++os.environ['TORCH_HOME']=str(R/'data/model_cache/torch');os.environ['ACT_ACTION_DIM']=str(get_action_dim('aloha_agilex'))
++torch.set_num_threads(4);torch.manual_seed(0)
++from XPolicyLab.policy.ACT.detr.models import build_ACT_model
++cfg=yaml.safe_load((R/'data/demo_train50/train4000_20261004_232142/evaluation/act_eval_config.yml').read_text());ckpt=Path(cfg['ckpt_dir']);tc=json.loads((ckpt/'training_config.json').read_text());data=Path(tc['dataset_dir'])
++device='cuda' if torch.cuda.is_available() else 'cpu';model=build_ACT_model(Namespace(**cfg));w=torch.load(ckpt/'policy_last.ckpt',map_location='cpu',weights_only=True);model.load_state_dict({k.removeprefix('model.'):v for k,v in w.items()},strict=True);model.to(device).eval()
++with open(ckpt/'dataset_stats.pkl','rb') as f:stats=pickle.load(f)
++CAMS=cfg['camera_names'];mean=torch.tensor([.485,.456,.406],device=device).reshape(1,1,3,1,1);std=torch.tensor([.229,.224,.225],device=device).reshape(1,1,3,1,1)
++def predict(q,ims):
++    qt=torch.from_numpy(((q-stats['qpos_mean'])/stats['qpos_std']).astype('float32'))[None].to(device)
++    im=torch.from_numpy(np.ascontiguousarray(ims.transpose(0,3,1,2))).float()[None].to(device)/255
++    with torch.inference_mode():p=model(qt,(im-mean)/std,None)[0][0].cpu().numpy()
++    return p*stats['action_std']+stats['action_mean']
++ref=np.load(ckpt/'checkpoint_reference.npz')
++with torch.inference_mode():a=model(torch.from_numpy(ref['qpos']).to(device),(torch.from_numpy(ref['images']).to(device)-mean)/std,None)[0].cpu().numpy()
++referr=float(np.abs(a-ref['actions']).max());assert referr<.001
++audit=json.loads((R/'data/recheck_20261004/trajectory_audit.json').read_text())['rows'];audit=[r for r in audit if r['path'].startswith('data/demo_train50/stack_blocks_two/')]
++initial=[]
++for row in audit:
++    i=int(Path(row['path']).stem.split('_')[-1])
++    with h5py.File(data/f'episode_{i}.hdf5') as f:q=f['observations/qpos'][0];ims=np.stack([f['observations/images/'+c][0] for c in CAMS]);target=f['action'][:50]
++    initial.append({'episode':i,'mode':row['mode'],'q':q,'images':ims,'target':target,'pred':predict(q,ims),'red_centroid':detect(ims[0],'red')['centroid']})
++rows=[];start=time.monotonic()
++for rec in initial:
++    # Full donor image set is physically coherent when initial joint states agree.
++    candidates=[r for r in initial if r['mode']==rec['mode'] and r['episode']!=rec['episode']]
++    donor=max(candidates,key=lambda r:np.linalg.norm(np.array(r['red_centroid'])-rec['red_centroid']))
++    swap=predict(rec['q'],donor['images']);j=0 if rec['mode'][0]=='L' else 7
++    delta=(swap-rec['pred'])[:,j:j+6];truth_delta=(donor['target']-rec['target'])[:,j:j+6]
++    rows.append({'episode':rec['episode'],'donor_episode':donor['episode'],'mode':rec['mode'],'initial_qpos_max_difference':float(np.abs(rec['q']-donor['q']).max()),'red_centroid_displacement_px':float(np.linalg.norm(np.array(donor['red_centroid'])-rec['red_centroid'])),'prediction_delta_mean_deg':float(np.abs(delta).mean()*180/np.pi),'expert_delta_mean_deg':float(np.abs(truth_delta).mean()*180/np.pi),'delta_cosine':float(np.sum(delta*truth_delta)/(np.linalg.norm(delta)*np.linalg.norm(truth_delta)+1e-12)),'baseline_mae_deg':float(np.abs(rec['pred'][:,j:j+6]-rec['target'][:,j:j+6]).mean()*180/np.pi),'swapped_mae_to_donor_deg':float(np.abs(swap[:,j:j+6]-donor['target'][:,j:j+6]).mean()*180/np.pi),'swapped_mae_to_recipient_deg':float(np.abs(swap[:,j:j+6]-rec['target'][:,j:j+6]).mean()*180/np.pi),'swapped_vs_donor_original_max_error':float(np.abs(swap-donor['pred']).max())})
++print('INITIAL SWAPS',len(rows),flush=True)
++phase=[]
++for ep in audit:
++    i=int(Path(ep['path']).stem.split('_')[-1])
++    if i not in tc['validation_episode_ids']:continue
++    with h5py.File(data/f'episode_{i}.hdf5') as f:
++        for color,event in zip(['red','green'],ep['closure_events']):
++            t=event['t']-10;q=f['observations/qpos'][t];ims=np.stack([f['observations/images/'+c][t] for c in CAMS]);target=f['action'][t:t+50];j=0 if event['arm']=='L' else 7;active_cam=2 if j==0 else 1;baseline=predict(q,ims)
++            for variant in ['baseline','mask_head','mask_active_wrist','mask_inactive_wrist','erase_target_head','erase_target_all','head_background_control']:
++                modified=ims.copy()
++                if variant.startswith('mask_'):
++                    cam={'mask_head':0,'mask_active_wrist':active_cam,'mask_inactive_wrist':3-active_cam}[variant];modified[cam]=np.array([123,116,103],dtype='uint8')
++                elif variant.startswith('erase_'):
++                    for cam in ([0] if variant=='erase_target_head' else range(3)):
++                        mask=cv2.dilate(mask_color(modified[cam],color),np.ones((5,5),dtype='uint8'))*255
++                        modified[cam]=cv2.inpaint(modified[cam],mask,3,cv2.INPAINT_TELEA)
++                elif variant=='head_background_control':
++                    box=detect(ims[0],color)['bbox']
++                    if box:
++                        width=box[2]-box[0];height=box[3]-box[1];mask=np.zeros(ims[0].shape[:2],dtype='uint8');mask[:height,:width]=255;modified[0]=cv2.inpaint(modified[0],mask,3,cv2.INPAINT_TELEA)
++                pred=baseline if variant=='baseline' else predict(q,modified);err=np.abs(pred[:len(target)]-target)
++                phase.append({'episode':i,'color':color,'mode':ep['mode'],'t':t,'variant':variant,'active_chunk_mae_deg':float(err[:,j:j+6].mean()*180/np.pi),'active_first_mae_deg':float(err[0,j:j+6].mean()*180/np.pi),'gripper_mae':float(err[:,j+6].mean()),'prediction_delta_deg':float(np.abs(pred[:,j:j+6]-baseline[:,j:j+6]).mean()*180/np.pi)})
++    print('PHASE',i,round(time.monotonic()-start,1),flush=True)
++summary=[]
++for color in ['red','green']:
++    for v in sorted(set(r['variant'] for r in phase)):
++        rs=[r for r in phase if r['color']==color and r['variant']==v];summary.append({'color':color,'variant':v,'samples':len(rs),**{k:float(np.mean([r[k] for r in rs])) for k in ['active_chunk_mae_deg','active_first_mae_deg','gripper_mae','prediction_delta_deg']}})
++(O/'vision_probe.json').write_text(json.dumps({'checkpoint':str(ckpt),'device':device,'reference_max_error':referr,'initial_swap_rows':rows,'phase_summary':summary,'phase_rows':phase,'notes':['Initial full image swaps use real scenes with same arm pattern, measured qpos difference reported. Color removal and uniform camera masks are out-of-distribution interventions; they establish sensitivity, not isolated causal importance or localization accuracy.','Fixed expert states, fresh chunks; no policy-generated state ground-truth action labels.']},indent=2))
++print(json.dumps(summary,indent=2),flush=True)
+diff --git a/data/vision_diagnosis_20261005/report_execute10.py b/data/vision_diagnosis_20261005/report_execute10.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/report_execute10.py
+@@ -0,0 +1,23 @@
++from pathlib import Path
++import json,numpy as np
++from PIL import Image,ImageDraw
++O=Path(__file__).parent;s=json.loads((O/'execute10_summary.json').read_text());rows=s['rows'];assert len(rows)==5 and all(r['finished'] and r['steps']==800 for r in rows)
++validation=[]
++for seed in [200000,300000]:
++ b=[json.loads(x) for x in (O/f'seed{seed}/trace.jsonl').read_text().splitlines()];n=[json.loads(x) for x in (O/f'seed{seed}_execute10/trace.jsonl').read_text().splitlines()]
++ validation.append({'seed':seed,'first10_action_max_difference':float(max(np.max(np.abs(np.array(b[i]['action'])-n[i]['action'])) for i in range(10))),'initial_positions_exact':all(b[0]['before'][c]==n[0]['before'][c] for c in ['red','green'])})
++assert all(v['first10_action_max_difference']==0 and v['initial_positions_exact'] for v in validation)
++(O/'execute10_validation.json').write_text(json.dumps(validation,indent=2))
++lines=['# 每执行10步重新预测：五个固定场景对照','', '保持4000轮模型、RGB处理、相机、执行器和50动作预测长度不变；仅将运行时 query_frequency 从50改为10。temporal_agg=false。每个固定场景运行800步，完整保存动作、实际机器人状态和物体位姿。每条轨迹均核对80次预测，发生在0、10、20……790步。','', '| seed | 原50步：红/绿最高抬升(cm) | 新10步：红/绿最高抬升(cm) | 新模式堆叠成功 |','|---|---|---|---|']
++for r in rows:
++ b=r['baseline50']['max_lift_cm'];n=r['max_lift_cm'];lines.append(f"| {r['seed']} | {b[0]:.2f} / {b[1]:.2f} | {n[0]:.2f} / {n[1]:.2f} | 否 |")
++lines+=['','两种模式的完整任务成功率都是0/5。以抬升超过3厘米作为阶段代理指标，红块从原来的2/5降为0/5，绿块从0/5变为1/5。高度指标本身不保证安全稳定抓取；首个场景的画面确认绿块被夹住并抬升，随后未完成转运与堆叠。','', '该结果否定了“只缩短到10步就足以解决失败”的假设。更频繁预测确实能改变并改善局部行为，但当前模型在重复重规划后也失去了原先部分红块抓取能力。不能由此排除视觉精细定位问题，也不能断言执行50步是唯一原因。模型的动作阶段推进与重新预测之间是否冲突，需要另行对照，尚未证明。','', '下一步优先检查两个原来红块成功的场景，在10步模式下首次偏离发生的位置及闭爪时机，再决定是否测试更短间隔或时间聚合；不应仅依据当前结果将默认部署改成10步。','', '两条已有仪器化基线与新模式的前10个动作完全一致，初始物体位姿完全一致；其他三条使用同一官方场景种子和设置。五个场景各一次，不能估计总体成功率。未改动核心适配器、默认部署配置和模型权重。','', '详细结果：execute10_summary.json；设置验证：execute10_validation.json；各轨迹：seed*_execute10/trace.jsonl 与 snapshots/。']
++(O/'REPORT_execute10.md').write_text('\n'.join(lines)+'\n')
++canvas=Image.new('RGB',(960,260*5),'white');draw=ImageDraw.Draw(canvas)
++for row,r in enumerate(rows):
++ seed=r['seed'];f=O/f'seed{seed}_execute10';trace=[json.loads(x) for x in (f/'trace.jsonl').read_text().splitlines()]
++ lift=np.array([[t['after']['red'][2],t['after']['green'][2]] for t in trace]);peak=int(np.argmax(lift[:,0]));greenpeak=int(np.argmax(lift[:,1]));ts=[(peak//10)*10,(greenpeak//10)*10,790]
++ for col,t in enumerate(ts):
++  p=f/'images'/f'{t:04d}_cam_head.png';im=Image.open(p);x=col*320;y=row*260;canvas.paste(im,(x,y+20));draw.text((x+3,y+3),f'{seed} | '+['red peak','green peak','final'][col]+f' | step {t}',fill='black')
++canvas.save(O/'execute10_all_scenes.jpg')
++print('Report and montage saved')
+diff --git a/data/vision_diagnosis_20261005/serial_camera.py b/data/vision_diagnosis_20261005/serial_camera.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/serial_camera.py
+@@ -0,0 +1,44 @@
++"""Read-only pose tracing around the unchanged evaluation action executor."""
++import faulthandler
++import json
++import runpy
++import sys
++from pathlib import Path
++
++root = Path('${ROBOTWIN_ROOT}')
++sys.path.insert(0, str(root))
++faulthandler.dump_traceback_later(180, repeat=True)
++from envs.stack_blocks_two import stack_blocks_two
++
++# Diagnostic: serialize camera rendering/readback while retaining the same
++# renderer, cameras, image conversion, policy and action execution.
++import numpy as np
++from envs.camera.camera import Camera
++original_get_rgba = Camera.get_rgba
++
++def serial_update_picture(self):
++    cameras = []
++    if self.collect_wrist_camera:
++        cameras.extend([('left_camera', self.left_camera), ('right_camera', self.right_camera)])
++    cameras.extend(zip(self.static_camera_name, self.static_camera_list))
++    cached = {}
++    for name, camera in cameras:
++        camera.take_picture()
++        rgba = camera.get_picture('Color')
++        if name != 'head_camera' or self.collect_head_camera:
++            cached[name] = {'rgba': (rgba * 255).clip(0, 255).astype('uint8')}
++    self._serial_rgba = cached
++    if not getattr(self, '_serial_verified', False):
++        reference = original_get_rgba(self)
++        assert reference.keys() == cached.keys()
++        assert all(np.array_equal(reference[k]['rgba'], cached[k]['rgba']) for k in reference)
++        self._serial_verified = True
++        print('SERIAL_CAMERA_CAPTURE: cached images exactly match original RGBA getter', flush=True)
++
++def cached_get_rgba(self):
++    cached = getattr(self, '_serial_rgba', None)
++    return original_get_rgba(self) if cached is None else cached
++
++Camera.update_picture = serial_update_picture
++Camera.get_rgba = cached_get_rgba
++
+diff --git a/data/vision_diagnosis_20261005/simulate.py b/data/vision_diagnosis_20261005/simulate.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/simulate.py
+@@ -0,0 +1,113 @@
++"""Instrument the unchanged ACT and action executor in two fixed existing scenes."""
++from pathlib import Path
++import os,sys,json,argparse,time
++import numpy as np,torch,yaml
++from PIL import Image
++R=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(R))
++parser=argparse.ArgumentParser();parser.add_argument('--seed',type=int,required=True);parser.add_argument('--steps',type=int,default=380)
++parser.add_argument('--fine',type=int,default=-1);parser.add_argument('--execute-steps',type=int,default=50)
++cli=parser.parse_args();assert 1<=cli.execute_steps<=50;O=Path(__file__).parent/(f'seed{cli.seed}_execute{cli.execute_steps}' if cli.execute_steps!=50 else (f'seed{cli.seed}' if cli.fine<0 else f'seed{cli.seed}_fine_fk'));O.mkdir(exist_ok=True);(O/'images').mkdir(exist_ok=True);(O/'snapshots').mkdir(exist_ok=True)
++os.environ['TORCH_HOME']=str(R/'data/model_cache/torch');os.environ['ROBOTWIN_RAY_TRACING_DENOISER']='none';os.environ['MPLCONFIGDIR']='/tmp/robotwin-matplotlib'
++torch.set_num_threads(4);torch.manual_seed(0);np.random.seed(0)
++import serial_camera
++import scripts.eval_policy_xpolicylab as ev
++from envs.stack_blocks_two import stack_blocks_two
++from XPolicyLab.policy.ACT.model import Model
++from XPolicyLab.utils.process_data import get_robot_action_dim_info,get_action_dim,decode_obs_images
++os.environ['ACT_ACTION_DIM']=str(get_action_dim('aloha_agilex'))
++cfg=yaml.safe_load((R/'data/demo_train50/train4000_20261004_232142/evaluation/act_eval_config.yml').read_text());adapter=Model(cfg)
++assert not adapter.model.temporal_agg and adapter.model.num_queries==50
++adapter.model.query_frequency=cli.execute_steps
++query_steps=[]
++original_get_action=adapter.model.get_action
++def checked_get_action():
++    t=adapter.model.t
++    if t%cli.execute_steps==0:query_steps.append(t)
++    action=original_get_action()
++    assert adapter.model.all_actions.shape[1]==50
++    return action
++adapter.model.get_action=checked_get_action
++trace=(O/'trace.jsonl').open('x',buffering=1);camera_rows=(O/'cameras.jsonl').open('x',buffering=1);task_ref=None
++def vecs(task):
++    robot=task.robot
++    result={'red':task.block1.get_pose().p.tolist(),'green':task.block2.get_pose().p.tolist(),
++      'red_quaternion':task.block1.get_pose().q.tolist(),'green_quaternion':task.block2.get_pose().q.tolist(),
++      'qpos_command':list(map(float,robot.get_left_arm_jointState()+robot.get_right_arm_jointState())),
++      'qpos_actual':list(map(float,robot.get_left_arm_real_jointState()+robot.get_right_arm_real_jointState())),
++      'left_tcp':list(map(float,robot.get_left_tcp_pose())),'right_tcp':list(map(float,robot.get_right_tcp_pose()))}
++    for side in ['left','right']:
++        entity=getattr(robot,side+'_entity');active=entity.get_active_joints();qs=entity.get_qpos()
++        result[side+'_finger_actual']=[float(qs[active.index(g[0])]) for g in getattr(robot,side+'_gripper')]
++        result[side+'_finger_targets']=[float(g[0].get_drive_target()[0]) for g in getattr(robot,side+'_gripper')]
++    return result
++def snapshot(obs):
++    task=task_ref;t=int(task.take_action_cnt)
++    if t%10!=0 and t not in [49,50,59,60,69,70,79,80,89,90,99,100,199,200,209,210,219,220,229,230,239,240,249,250,259,260,269,270]:return
++    cameras=task.cameras.get_config();data={'qpos':np.array(task.robot.get_left_arm_jointState()+task.robot.get_right_arm_jointState(),dtype=np.float32)}
++    poses=vecs(task)
++    for cam,rw in [('cam_head','head_camera'),('cam_right_wrist','right_camera'),('cam_left_wrist','left_camera')]:
++        im=np.asarray(obs['vision'][cam]['color']);data[cam]=im;data[cam+'_K']=cameras[rw]['intrinsic_cv'];data[cam+'_E']=cameras[rw]['extrinsic_cv']
++        Image.fromarray(im).save(O/'images'/f'{t:04d}_{cam}.png')
++    data.update({k:np.array(v) for k,v in poses.items()});np.savez_compressed(O/'snapshots'/f'{t:04d}.npz',**data)
++    camera_rows.write(json.dumps({'step':t,**poses})+'\n')
++def fine_probe(obs):
++    import sapien
++    task=task_ref;color='red' if cli.fine<170 else 'green';actor=task.block1 if color=='red' else task.block2;original=actor.get_pose();q=np.array(task.robot.get_left_arm_jointState()+task.robot.get_right_arm_jointState())
++    side='right' if color=='red' else 'left';j=7 if side=='right' else 0;records=[]
++    def infer(view):
++        encoded=adapter.encode_obs(view,'joint',adapter.robot_action_dim_info);qn=adapter.model.pre_process(encoded['qpos'])
++        qt=torch.from_numpy(np.asarray(qn)).float().cuda()[None];im=torch.from_numpy(np.ascontiguousarray(np.stack([encoded[c] for c in adapter.camera_names]))).float().cuda()[None]
++        with torch.inference_mode():pred=adapter.model.policy(qt,im)[0].cpu().numpy()
++        return adapter.model.post_process(pred)
++    baseline=infer(obs)
++    import transforms3d as t3d
++    robot=task.robot;entity=getattr(robot,side+'_entity');joint=getattr(robot,side+'_ee');active=entity.get_active_joints();pin=entity.create_pinocchio_model();link_index=entity.get_links().index(joint.child_link);full=entity.get_qpos().copy()
++    def fk(qarm):
++        qfull=full.copy()
++        for k,aj in enumerate(getattr(robot,side+'_arm_joints')):qfull[active.index(aj)]=qarm[k]
++        pin.compute_forward_kinematics(qfull);ee_world=entity.get_root_pose()*pin.get_link_pose(link_index)*joint.get_pose_in_child()
++        rotation=t3d.quaternions.quat2mat(ee_world.q)@getattr(robot,side+'_global_trans_matrix')@getattr(robot,side+'_delta_matrix')
++        return ee_world.p+rotation@np.array([getattr(robot,side+'_gripper_bias'),0,0])
++    actual_arm=np.array(getattr(robot,'get_'+side+'_arm_real_jointState')()[:6]);fk_error=float(np.abs(fk(actual_arm)-np.array(getattr(robot,'get_'+side+'_tcp_pose')()[:3])).max());assert fk_error<1e-5,fk_error
++    baseline_tcp=np.array([fk(row[j:j+6]) for row in baseline]);closed=np.where(baseline[:,j+6]<.2)[0];closure_index=int(closed[0]) if len(closed) else int(np.argmin(baseline[:,j+6]))
++    np.savez_compressed(O/'fine_baseline.npz',pred=baseline,tcp=baseline_tcp,block=original.p,qpos=q)
++    for axis in [0,1]:
++        for shift in [-.02,-.01,.01,.02]:
++            position=original.p.copy();position[axis]+=shift;actor.actor.set_pose(sapien.Pose(position,original.q));rw=task.get_obs();view=ev.robotwin_obs_to_xpolicylab(rw,task_env=task);decode_obs_images(view);pred=infer(view)
++            images=np.stack([view['vision'][c]['color'] for c in adapter.camera_names]);np.savez_compressed(O/f'fine_{axis}_{shift:+.2f}.npz',images=images,qpos=q,pred=pred,baseline=baseline,block=position)
++            delta=pred-baseline;tcp=np.array([fk(row[j:j+6]) for row in pred]);records.append({'axis':'x' if axis==0 else 'y','shift_cm':shift*100,'baseline_closure_index':closure_index,'predicted_tcp_shift_at_closure_cm':((tcp[closure_index]-baseline_tcp[closure_index])*100).tolist(),'target_shift_cm':((position-original.p)*100).tolist(),'baseline_predicted_tcp_error_at_closure_cm':((baseline_tcp[closure_index]-original.p)*100).tolist(),'shifted_predicted_tcp_error_at_closure_cm':((tcp[closure_index]-position)*100).tolist(),'active_first_delta_deg':(delta[0,j:j+6]*180/np.pi).tolist(),'active_chunk_delta_mean_deg':float(np.abs(delta[:,j:j+6]).mean()*180/np.pi),'gripper_delta_mean':float(np.abs(delta[:,j+6]).mean()),'qpos_max_error':float(np.abs(np.array(task.robot.get_left_arm_jointState()+task.robot.get_right_arm_jointState())-q).max())})
++    actor.actor.set_pose(original);rw=task.get_obs();restored=ev.robotwin_obs_to_xpolicylab(rw,task_env=task);decode_obs_images(restored)
++    image_error=max(int(np.abs(np.asarray(restored['vision'][c]['color']).astype(int)-np.asarray(obs['vision'][c]['color']).astype(int)).max()) for c in adapter.camera_names)
++    (O/'fine_probe.json').write_text(json.dumps({'step':cli.fine,'color':color,'rows':records,'restored_rgb_max_error':image_error,'fk_actual_tcp_max_error_m':fk_error,'note':'Only block position changed on a frozen simulator state; all three cameras rerendered. No physics step or policy cache update during the intervention. Response measures sensitivity, not correctness.'},indent=2))
++    assert image_error==0
++    return restored
++class LocalClient:
++    _robotwin_protocol='diagnostic_local'
++    def call(self,func_name=None,obs=None,**kwargs):
++        if func_name=='reset':adapter.reset();return None
++        if func_name=='update_obs':
++            decode_obs_images(obs)
++            if cli.fine>=0 and int(task_ref.take_action_cnt)==cli.fine and not (O/'fine_probe.json').exists():obs=fine_probe(obs)
++            snapshot(obs);adapter.update_obs(obs);return None
++        if func_name=='get_action':return adapter.get_action()
++        raise ValueError(func_name)
++    def close(self):pass
++ev.build_policy_client=lambda args:LocalClient()
++original_eval=ev.eval_remote_policy
++def fixed(task_name,task,args,client,st_seed,**kwargs):
++    global task_ref
++    task_ref=task
++    return original_eval(task_name,task,args,client,cli.seed,**kwargs)
++ev.eval_remote_policy=fixed
++original_action=stack_blocks_two.take_action
++def traced(self,action,action_type='qpos'):
++    if self.take_action_cnt==0:self.step_lim=cli.steps
++    t=int(self.take_action_cnt);before=vecs(self);result=original_action(self,action,action_type)
++    trace.write(json.dumps({'step':t,'model_query_step':t-t%cli.execute_steps,'action':np.asarray(action).tolist(),'before':before,'after':vecs(self),'success':bool(self.eval_success)})+'\n')
++    return result
++stack_blocks_two.take_action=traced
++start=time.monotonic()
++try:
++    ev.main({'bench_name':'demo_train50','task_name':'stack_blocks_two','env_cfg_type':'aloha_agilex','policy_name':'ACT','seed':0,'test_num':1,'task_config':'demo_smoke','expert_check':False,'instruction_type':'seen','action_type':'joint','eval_batch':False,'ckpt_name':cfg['ckpt_name']+'-vision-diagnostic','root_dir':str(R),'device_id':0})
++finally:
++    trace.close();camera_rows.close();(O/'run.json').write_text(json.dumps({'seed':cli.seed,'steps_limit':cli.steps,'elapsed_seconds':time.monotonic()-start,'checkpoint':cfg['ckpt_dir'],'executor':'unchanged; local adapter, no websocket serialization; same RGB arrays','complete':True,'execute_steps':cli.execute_steps,'num_queries':adapter.model.num_queries,'query_steps':query_steps},indent=2))
+diff --git a/data/vision_diagnosis_20261005/summarize_execute10.py b/data/vision_diagnosis_20261005/summarize_execute10.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/summarize_execute10.py
+@@ -0,0 +1,17 @@
++from pathlib import Path
++import json,numpy as np
++O=Path(__file__).parent;rows=[]
++for seed in [200000,300000,400000,500000,600000]:
++    folder=O/f'seed{seed}_execute10';p=folder/'trace.jsonl'
++    if not p.exists():continue
++    trace=[json.loads(x) for x in p.read_text().splitlines() if x.strip()]
++    if not trace:continue
++    objs=np.array([[r['after']['red'],r['after']['green']] for r in trace]);initial=np.array([trace[0]['before']['red'],trace[0]['before']['green']]);lift=(objs[:,:,2]-initial[:,2])*100
++    geometry=np.all(np.abs(objs[:,1]-objs[:,0]-[0,0,.05])<[.025,.025,.012],axis=1)
++    run=json.loads((folder/'run.json').read_text()) if (folder/'run.json').exists() else None
++    assert all(r['model_query_step']==r['step']-r['step']%10 for r in trace)
++    if run:assert run['query_steps']==list(range(0,len(trace),10)) and run['num_queries']==50
++    baseline=[x for x in json.loads((O.parent/'recheck_20261005/trace_summary.json').read_text()) if x['seed']==seed][0]
++    rows.append({'seed':seed,'finished':run is not None,'steps':len(trace),'success':any(r['success'] for r in trace),'max_lift_cm':lift.max(0).tolist(),'frames_above_3cm':(lift>3).sum(0).tolist(),'first_above_3cm':[next((i for i in range(len(trace)) if lift[i,j]>3),None) for j in range(2)],'stack_geometry_ever':bool(geometry.any()),'final_red_target_xy_cm':float(np.linalg.norm(objs[-1,0,:2]-[0,-.13])*100),'final_positions':objs[-1].tolist(),'baseline50':baseline,'num_predictions':len(run['query_steps']) if run else None})
++result={'execute_steps':10,'prediction_chunk_size':50,'rows':rows,'note':'Single paired run per fixed seed; height >3 cm is a lift proxy, not proof of secure grasp. Official success includes relative block geometry and both grippers open. Step indices here are zero-based.'}
++(O/'execute10_summary.json').write_text(json.dumps(result,indent=2));print(json.dumps(result,indent=2))
+diff --git a/data/vision_diagnosis_20261005/vision_utils.py b/data/vision_diagnosis_20261005/vision_utils.py
+new file mode 100644
+--- /dev/null
++++ b/data/vision_diagnosis_20261005/vision_utils.py
+@@ -0,0 +1,15 @@
++"""Color-based diagnostics for known red/green boxes; not the ACT perception model."""
++import numpy as np,cv2
++def mask_color(rgb,color):
++    hsv=cv2.cvtColor(rgb,cv2.COLOR_RGB2HSV)
++    hue=hsv[:,:,0];sat=hsv[:,:,1];val=hsv[:,:,2]
++    hue_ok=((hue<12)|(hue>168)) if color=='red' else ((hue>35)&(hue<90))
++    return (hue_ok&(sat>110)&(val>45)).astype('uint8')
++def detect(rgb,color):
++    mask=mask_color(rgb,color);n,labels,stats,centroids=cv2.connectedComponentsWithStats(mask)
++    if n<=1:return {'pixels':0,'bbox':None,'centroid':None,'touches_border':False}
++    j=1+int(np.argmax(stats[1:,cv2.CC_STAT_AREA]));x,y,w,h,area=stats[j].tolist()
++    return {'pixels':area,'bbox':[x,y,x+w,y+h],'centroid':centroids[j].tolist(),'touches_border':bool(x==0 or y==0 or x+w==rgb.shape[1] or y+h==rgb.shape[0])}
++def project(point,K,E):
++    xyz=(E@np.r_[point[:3],1])[:3];p=K@xyz
++    return (p[:2]/p[2]).tolist() if xyz[2]>0 else None
+diff --git a/data/demo_train20/compare4000_20261004_112100/eval_progress.py b/data/demo_train20/compare4000_20261004_112100/eval_progress.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/eval_progress.py
+@@ -0,0 +1,10 @@
++from pathlib import Path
++import json,re,time
++out=Path(__file__).parent
++for d in [out/'seen_seed0']+sorted((out/'unseen_five').glob('case_*')):
++ p=d/'object_trace.jsonl'
++ if not p.exists() or not p.stat().st_size:
++  continue
++ rows=[json.loads(x) for x in p.read_text().splitlines()];last=rows[-1]
++ log=(d/'act_eval_client.log').read_text();m=re.search(r'Final success rate: (\d+)/1',log)
++ print(json.dumps({'case':d.name,'step':last['step'],'complete':bool(m),'success':bool(int(m.group(1))) if m else None,'red_max_rise_cm':round((max(r['red'][2] for r in rows)-rows[0]['red'][2])*100,2),'green_max_rise_cm':round((max(r['green'][2] for r in rows)-rows[0]['green'][2])*100,2),'trace_age_s':round(time.time()-p.stat().st_mtime)}))
+diff --git a/data/demo_train20/compare4000_20261004_112100/evaluate4000.sh b/data/demo_train20/compare4000_20261004_112100/evaluate4000.sh
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/evaluate4000.sh
+@@ -0,0 +1,18 @@
++#!/usr/bin/env bash
++set -euo pipefail
++source ${USER_HOME}/anaconda3/etc/profile.d/conda.sh
++conda activate RoboTwin
++cd ${ROBOTWIN_ROOT}
++export CUDA_VISIBLE_DEVICES=0
++export TORCH_HOME=${ROBOTWIN_ROOT}/data/model_cache/torch
++export MPLCONFIGDIR=/tmp/robotwin-matplotlib
++export ROBOTWIN_RAY_TRACING_DENOISER=none
++export PYTHONUNBUFFERED=1
++experiment=${ROBOTWIN_ROOT}/data/demo_train20/compare4000_20261004_112100
++checkpoint=${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100
++python scripts/validate_act_checkpoint.py --ckpt-dir "$checkpoint" --env-cfg-type aloha_agilex --action-type joint > "$experiment/checkpoint_validation.log" 2>&1
++python "$experiment/offline_probe.py" > "$experiment/offline_probe.log" 2>&1
++timeout --signal=TERM --kill-after=15s 600s bash "$experiment/seen_seed0/run.sh" > "$experiment/seen_seed0/launcher.log" 2>&1
++python "$experiment/unseen_five/run_isolated.py" > "$experiment/unseen_five/launcher.log" 2>&1
++python "$experiment/unseen_five/analyze_completed.py" > "$experiment/unseen_five/analysis.log" 2>&1
++python "$experiment/summarize_comparison.py" > "$experiment/comparison_summary.log" 2>&1
+diff --git a/data/demo_train20/compare4000_20261004_112100/offline_probe.py b/data/demo_train20/compare4000_20261004_112100/offline_probe.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/offline_probe.py
+@@ -0,0 +1,49 @@
++from pathlib import Path
++import sys,os,json,pickle,statistics
++import h5py,numpy as np,torch,yaml
++root=Path('${ROBOTWIN_ROOT}');sys.path.insert(0,str(root))
++from XPolicyLab.utils.process_data import get_action_dim
++from XPolicyLab.policy.ACT.model import Model
++out=Path(__file__).parent
++ckpt=Path('${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100')
++c=json.loads((ckpt/'training_config.json').read_text())
++cfg=yaml.safe_load((out/'unseen_five/act_eval_config.yml').read_text())
++os.environ['ACT_ACTION_DIM']=str(get_action_dim('aloha_agilex'))
++torch.manual_seed(0);np.random.seed(0)
++adapter=Model(cfg);policy=adapter.model.policy
++with (ckpt/'dataset_stats.pkl').open('rb') as f:stats=pickle.load(f)
++dim=len(stats['action_mean']);half=dim//2;grippers=[half-1,dim-1];arms=[i for i in range(dim) if i not in grippers]
++rows=[];initial=[]
++for epoch in [4000]:
++ policy.load_state_dict(torch.load(ckpt/f'policy_epoch_{epoch}_seed_0.ckpt',map_location='cuda:0',weights_only=True));policy.eval()
++ for ep in range(20):
++  split='train' if ep in c['train_episode_ids'] else 'validation'
++  with h5py.File(Path(c['dataset_dir'])/f'episode_{ep}.hdf5') as f:
++   action=f['action'][:];state=f['observations/qpos'][:]
++   ids=list(np.linspace(0,len(action)-50,8,dtype=int))
++   for g in grippers:
++    closing=np.where((action[:-1,g]>.5)&(action[1:,g]<=.5))[0]
++    ids.extend(int(max(0,min(len(action)-50,t-5))) for t in closing)
++   for t in sorted(set(ids)):
++    im=np.stack([f['observations/images/'+cam][t] for cam in c['camera_names']])
++    image=torch.from_numpy(np.ascontiguousarray(im.transpose(0,3,1,2))).float().div(255).unsqueeze(0).cuda()
++    q=torch.from_numpy(((state[t]-stats['qpos_mean'])/stats['qpos_std']).astype('float32')).unsqueeze(0).cuda()
++    target=(action[t:t+50]-stats['action_mean'])/stats['action_std']
++    with torch.inference_mode():
++     pred=policy(q,image)[0].cpu().numpy()
++     posterior=policy(q,image,torch.from_numpy(target.astype('float32')).unsqueeze(0).cuda(),torch.zeros((1,50),dtype=torch.bool,device='cuda'))
++    raw=pred*stats['action_std']+stats['action_mean'];err=np.abs(raw-action[t:t+50])
++    rows.append({'epoch':epoch,'episode':ep,'split':split,'t':int(t),'inference_normalized_l1':float(np.abs(pred-target).mean()),'posterior_normalized_l1':float(posterior['l1'].item()),'first_action_arm_mae_deg':float(err[0,arms].mean()*180/np.pi),'chunk_arm_mae_deg':float(err[:,arms].mean()*180/np.pi),'gripper_mae':float(err[:,grippers].mean()),'gripper_half_threshold_disagreement':float(((raw[:,grippers]>.5)!=(action[t:t+50,grippers]>.5)).mean())})
++    if t==0:
++     def active_arm(a):
++      d=np.abs(a-state[0]);return 'left' if d[:,:half-1].max()>d[:,half:-1].max() else 'right'
++     initial.append({'epoch':epoch,'episode':ep,'split':split,'expert_first_arm':active_arm(action[:50]),'predicted_first_arm':active_arm(raw)})
++  print('DONE',epoch,ep,flush=True)
++ summary={}
++ for split in ['train','validation']:
++  subset=[r for r in rows if r['epoch']==epoch and r['split']==split]
++  keys=[k for k in subset[0] if k not in ['epoch','episode','split','t']]
++  init=[r for r in initial if r['epoch']==epoch and r['split']==split]
++  summary[split]={'samples':len(subset),**{k:statistics.mean(r[k] for r in subset) for k in keys},'initial_arm_correct':sum(r['expert_first_arm']==r['predicted_first_arm'] for r in init),'initial_arm_total':len(init)}
++ print('SUMMARY',epoch,json.dumps(summary),flush=True)
++ (out/'offline_results.json').write_text(json.dumps({'rows':rows,'initial_arm_predictions':initial},indent=2)+'\n')
+diff --git a/data/demo_train20/compare4000_20261004_112100/plot_training.py b/data/demo_train20/compare4000_20261004_112100/plot_training.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/plot_training.py
+@@ -0,0 +1,25 @@
++from pathlib import Path
++import json
++import numpy as np
++import matplotlib
++matplotlib.use('Agg')
++import matplotlib.pyplot as plt
++out=Path(__file__).parent
++manifest=json.loads((out/'experiment.json').read_text())
++rows=[]
++for key in ['source_checkpoint_dir','checkpoint_dir']:
++ rows += [json.loads(x) for x in (Path(manifest[key])/'training_metrics.jsonl').read_text().splitlines()]
++fig,ax=plt.subplots(figsize=(10,4.8),layout='constrained')
++for key,label,color in [('train','Training','#2166ac'),('validation_before_epoch','Validation (sampled frames)','#d6604d')]:
++ x=np.array([r['epoch'] for r in rows]);y=np.array([r[key]['l1'] for r in rows])
++ ax.plot(x,y,alpha=.12,color=color,lw=.5)
++ for low,high in [(1,2000),(2001,4000)]:
++  take=(x>=low)&(x<=high);xs=x[take];ys=y[take]
++  if len(xs)>=100:ax.plot(xs[99:],np.convolve(ys,np.ones(100)/100,mode='valid'),color=color,lw=2,label=label if low==1 else None)
++ax.axvline(2000,color='#555555',ls='--',lw=1)
++ax.text(2040,.39,'Warm start\noptimizer reset',fontsize=9,color='#555555')
++ax.set(xlabel='Cumulative epoch',ylabel='Normalized L1',title='ACT: same 20 episodes (16 training / 4 validation)',ylim=(0,.5),xlim=(0,4000))
++ax.legend(title='Lines: 100-epoch mean',frameon=False)
++ax.grid(alpha=.15)
++fig.savefig(out/'training_curve.png',dpi=160)
++plt.close(fig)
+diff --git a/data/demo_train20/compare4000_20261004_112100/progress.py b/data/demo_train20/compare4000_20261004_112100/progress.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/progress.py
+@@ -0,0 +1,10 @@
++from pathlib import Path
++import json, statistics
++out = Path(__file__).parent
++manifest = json.loads((out / 'experiment.json').read_text())
++ckpt = Path(manifest['checkpoint_dir'])
++rows = [json.loads(line) for line in (ckpt / 'training_metrics.jsonl').read_text().splitlines()]
++last = rows[-1]
++window = rows[-100:]
++rate = (last['elapsed_seconds'] - window[0]['elapsed_seconds']) / max(1, len(window) - 1)
++print(json.dumps({'epoch': last['epoch'], 'elapsed_min': round(last['elapsed_seconds']/60, 1), 'remaining_min': round(rate*(4000-last['epoch'])/60, 1), 'window_epochs': len(window), 'mean_train_l1': round(statistics.mean(r['train']['l1'] for r in window), 5), 'mean_val_l1': round(statistics.mean(r['validation_before_epoch']['l1'] for r in window), 5), 'final_checkpoint': (ckpt/'policy_last.ckpt').exists()}, ensure_ascii=False))
+diff --git a/data/demo_train20/compare4000_20261004_112100/seen_seed0/run.sh b/data/demo_train20/compare4000_20261004_112100/seen_seed0/run.sh
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/seen_seed0/run.sh
+@@ -0,0 +1,49 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++source ${USER_HOME}/anaconda3/etc/profile.d/conda.sh
++conda activate RoboTwin
++cd ${ROBOTWIN_ROOT}
++
++export CUDA_VISIBLE_DEVICES=0
++export TORCH_HOME=${ROBOTWIN_ROOT}/data/model_cache/torch
++export MPLCONFIGDIR=/tmp/robotwin-matplotlib
++export ROBOTWIN_RAY_TRACING_DENOISER=none
++export PYTHONUNBUFFERED=1
++ACT_ACTION_DIM=$(python -c 'from XPolicyLab.utils.process_data import get_action_dim; print(get_action_dim("aloha_agilex"))')
++export ACT_ACTION_DIM
++
++policy_port=$(bash XPolicyLab/utils/get_free_port.sh)
++server_pid=""
++cleanup() {
++    if [[ -n "$server_pid" ]]; then
++        kill "$server_pid" 2>/dev/null || true
++        wait "$server_pid" 2>/dev/null || true
++    fi
++}
++trap cleanup EXIT
++trap 'exit 130' INT
++trap 'exit 143' TERM
++
++python XPolicyLab/setup_policy_server.py \
++    --config_path data/demo_train20/compare4000_20261004_112100/seen_seed0/act_eval_config.yml \
++    --host 127.0.0.1 --port "$policy_port" \
++    > data/demo_train20/compare4000_20261004_112100/seen_seed0/act_eval_server.log 2>&1 &
++server_pid=$!
++printf '%s\n' "$server_pid" > data/demo_train20/compare4000_20261004_112100/seen_seed0/act_eval_server.pid
++bash XPolicyLab/utils/wait_for_policy_server.sh \
++    127.0.0.1 "$policy_port" "$server_pid" ACT 120
++
++python ${ROBOTWIN_ROOT}/data/demo_train20/compare4000_20261004_112100/seen_seed0/trace_eval.py \
++    --bench_name demo_train20 \
++    --task_name stack_blocks_two \
++    --env_cfg_type aloha_agilex \
++    --policy_name ACT \
++    --host 127.0.0.1 --port "$policy_port" --protocol ws \
++    --eval_batch false \
++    --root_dir ${ROBOTWIN_ROOT} --device_id 0 \
++    --task_config demo_smoke --test_num 1 --seed 0 \
++    --expert_check true --instruction_type seen \
++    --additional_info 'ckpt_name=demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100,action_type=joint' \
++    > data/demo_train20/compare4000_20261004_112100/seen_seed0/act_eval_client.log 2>&1
++tail -c 1600 data/demo_train20/compare4000_20261004_112100/seen_seed0/act_eval_client.log
+diff --git a/data/demo_train20/compare4000_20261004_112100/seen_seed0/trace_eval.py b/data/demo_train20/compare4000_20261004_112100/seen_seed0/trace_eval.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/seen_seed0/trace_eval.py
+@@ -0,0 +1,74 @@
++"""Read-only pose tracing around the unchanged evaluation action executor."""
++import faulthandler
++import json
++import runpy
++import sys
++from pathlib import Path
++
++root = Path('${ROBOTWIN_ROOT}')
++sys.path.insert(0, str(root))
++faulthandler.dump_traceback_later(180, repeat=True)
++from envs.stack_blocks_two import stack_blocks_two
++
++# Diagnostic: serialize camera rendering/readback while retaining the same
++# renderer, cameras, image conversion, policy and action execution.
++import numpy as np
++from envs.camera.camera import Camera
++original_get_rgba = Camera.get_rgba
++
++def serial_update_picture(self):
++    cameras = []
++    if self.collect_wrist_camera:
++        cameras.extend([('left_camera', self.left_camera), ('right_camera', self.right_camera)])
++    cameras.extend(zip(self.static_camera_name, self.static_camera_list))
++    cached = {}
++    for name, camera in cameras:
++        camera.take_picture()
++        rgba = camera.get_picture('Color')
++        if name != 'head_camera' or self.collect_head_camera:
++            cached[name] = {'rgba': (rgba * 255).clip(0, 255).astype('uint8')}
++    self._serial_rgba = cached
++    if not getattr(self, '_serial_verified', False):
++        reference = original_get_rgba(self)
++        assert reference.keys() == cached.keys()
++        assert all(np.array_equal(reference[k]['rgba'], cached[k]['rgba']) for k in reference)
++        self._serial_verified = True
++        print('SERIAL_CAMERA_CAPTURE: cached images exactly match original RGBA getter', flush=True)
++
++def cached_get_rgba(self):
++    cached = getattr(self, '_serial_rgba', None)
++    return original_get_rgba(self) if cached is None else cached
++
++Camera.update_picture = serial_update_picture
++Camera.get_rgba = cached_get_rgba
++
++original_take_action = stack_blocks_two.take_action
++trace = Path(__file__).with_name('object_trace.jsonl').open('x', buffering=1)
++def record(task, phase):
++    row = {
++        'episode': int(task.test_num),
++        'step': int(task.take_action_cnt),
++        'phase': phase,
++        'red': task.block1.get_pose().p.tolist(),
++        'green': task.block2.get_pose().p.tolist(),
++        'left_gripper_command': float(task.robot.get_left_gripper_val()),
++        'right_gripper_command': float(task.robot.get_right_gripper_val()),
++        'success': bool(task.eval_success),
++    }
++    trace.write(json.dumps(row) + '\n')
++def traced_take_action(self, action, action_type='qpos'):
++    if self.take_action_cnt == 0:
++        record(self, 'initial')
++    result = original_take_action(self, action, action_type=action_type)
++    record(self, 'after_action')
++    return result
++stack_blocks_two.take_action = traced_take_action
++import scripts.eval_policy_xpolicylab as evaluator
++original_eval = evaluator.eval_remote_policy
++def seed_zero(task_name, task_env, args, model_client, st_seed, **kwargs):
++    return original_eval(task_name, task_env, args, model_client, 0, **kwargs)
++evaluator.eval_remote_policy = seed_zero
++try:
++    evaluator.main(evaluator.parse_args())
++finally:
++    trace.close()
+diff --git a/data/demo_train20/compare4000_20261004_112100/summarize_comparison.py b/data/demo_train20/compare4000_20261004_112100/summarize_comparison.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/summarize_comparison.py
+@@ -0,0 +1,46 @@
++from pathlib import Path
++import hashlib,json,re,statistics,subprocess
++import numpy as np
++root=Path('${ROBOTWIN_ROOT}');out=Path(__file__).parent
++manifest=json.loads((out/'experiment.json').read_text())
++source=Path(manifest['source_checkpoint_dir']);new=Path(manifest['checkpoint_dir'])
++old_raw=json.loads((root/'data/demo_train20/diagnose_20261004/offline_results.json').read_text())
++new_raw=json.loads((out/'offline_results.json').read_text())
++old_rows=[r for r in old_raw['rows'] if r['epoch']==2000]
++new_rows=new_raw['rows']
++assert {(r['episode'],r['t'],r['split']) for r in old_rows}=={(r['episode'],r['t'],r['split']) for r in new_rows}
++offline=[]
++for epoch,rows in [(2000,old_rows),(4000,new_rows)]:
++ for split in ['train','validation']:
++  subset=[r for r in rows if r['split']==split]
++  keys=['inference_normalized_l1','first_action_arm_mae_deg','chunk_arm_mae_deg','gripper_mae']
++  offline.append({'epoch':epoch,'split':split,'samples':len(subset),**{k:statistics.mean(r[k] for r in subset) for k in keys}})
++old_sim=json.loads((root/'data/demo_train20/eval5_serial_20260930_113258/results.json').read_text())
++new_sim=json.loads((out/'unseen_five/results.json').read_text())
++assert new_sim['completed_cases']==5
++assert [r['scene_seed'] for r in old_sim['cases']]==[r['scene_seed'] for r in new_sim['cases']]
++for a,b in zip(old_sim['cases'],new_sim['cases']):
++ np.testing.assert_allclose(a['initial_positions'],b['initial_positions'],rtol=0,atol=1e-6)
++seen=out/'seen_seed0';log=re.sub(r'\x1b\[[0-9;]*m','',(seen/'act_eval_client.log').read_text())
++match=re.search(r'Final success rate: (\d+)/1',log)
++assert match and 'Policy rollout error' not in log
++trace=[json.loads(x) for x in (seen/'object_trace.jsonl').read_text().splitlines()]
++assert [r['step'] for r in trace]==list(range(trace[-1]['step']+1))
++success=bool(int(match.group(1)))
++assert success or trace[-1]['step']==800
++pos=np.array([[r['red'],r['green']] for r in trace])
++video=(root/re.search(r'Data has been saved to (.+/_result.txt)',log).group(1)).with_name('episode0.mp4')
++metadata=json.loads(subprocess.check_output(['ffprobe','-v','error','-count_frames','-show_entries','stream=nb_read_frames,duration','-of','json',str(video)]))['streams'][0]
++seen_result={'scene_seed':0,'success':success,'steps':trace[-1]['step'],'video':str(video),'metadata':metadata,'max_height_increase_cm':((pos[:,:,2].max(0)-pos[0,:,2])*100).tolist()}
++old_seen_rows=[json.loads(x) for x in (root/'data/demo_train20/diagnose_20261004/policy_seen_seed0/object_trace.jsonl').read_text().splitlines()]
++np.testing.assert_allclose([old_seen_rows[0]['red'],old_seen_rows[0]['green']],pos[0],atol=1e-6,rtol=0)
++for f,expected in manifest['source_sha256'].items():
++ assert hashlib.sha256((source/f).read_bytes()).hexdigest()==expected
++validation=json.loads((new/'checkpoint_validation.json').read_text())
++training=[]
++for epoch,d in [(2000,source),(4000,new)]:
++ rows=[json.loads(x) for x in (d/'training_metrics.jsonl').read_text().splitlines()];window=rows[-200:]
++ training.append({'epoch':epoch,'optimizer_steps':rows[-1]['optimizer_steps'],'elapsed_seconds_this_run':rows[-1]['elapsed_seconds'],'last_200_mean_train_l1':statistics.mean(r['train']['l1'] for r in window),'last_200_mean_validation_l1':statistics.mean(r['validation_before_epoch']['l1'] for r in window)})
++report={'experiment':manifest,'offline_fixed_samples':offline,'training':training,'unseen_2000':old_sim,'unseen_4000':new_sim,'seen_seed0_4000':seen_result,'source_checkpoint_unchanged':True,'checkpoint_validation':validation,'limitations':['Weights-only continuation reset optimizer and RNG at epoch 2000.','Five fixed unseen scenes and one training scene are a small diagnostic sample.','Object height increase alone does not prove a secure grasp.']}
++(out/'comparison_results.json').write_text(json.dumps(report,indent=2)+'\n')
++print(json.dumps({'offline':offline,'training':training,'unseen_successes':[old_sim['successes'],new_sim['successes']],'seen_seed0_4000':seen_result},indent=2))
+diff --git a/data/demo_train20/compare4000_20261004_112100/train_to4000.sh b/data/demo_train20/compare4000_20261004_112100/train_to4000.sh
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/train_to4000.sh
+@@ -0,0 +1,12 @@
++#!/usr/bin/env bash
++set -euo pipefail
++source ${USER_HOME}/anaconda3/etc/profile.d/conda.sh
++conda activate RoboTwin
++cd ${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT
++export CUDA_VISIBLE_DEVICES=0
++export TORCH_HOME=${ROBOTWIN_ROOT}/data/model_cache/torch
++export MPLCONFIGDIR=/tmp/robotwin-matplotlib
++export PYTHONUNBUFFERED=1
++ACT_ACTION_DIM=$(bash ${ROBOTWIN_ROOT}/XPolicyLab/utils/get_action_dim.sh ${ROBOTWIN_ROOT} aloha_agilex)
++export ACT_ACTION_DIM
++python imitate_episodes.py --bench_name demo_train20 --task_name stack_blocks_two --ckpt_setting demo_train20-stack_blocks_two-aloha_agilex-joint --ckpt_dir ${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100 --policy_class ACT --kl_weight 10 --chunk_size 50 --hidden_dim 512 --batch_size 1 --dim_feedforward 3200 --num_epochs 4000 --lr 1e-5 --save_freq 200 --seed 0 --warm_start_dir ${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251 > ${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100/train.log 2>&1
+diff --git a/data/demo_train20/compare4000_20261004_112100/unseen_five/analyze_completed.py b/data/demo_train20/compare4000_20261004_112100/unseen_five/analyze_completed.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/unseen_five/analyze_completed.py
+@@ -0,0 +1,42 @@
++"""Summarize completed rollouts only; retain interrupted attempts separately."""
++from pathlib import Path
++import json, re, subprocess
++import numpy as np
++import cv2
++from PIL import Image, ImageDraw
++root=Path('${ROBOTWIN_ROOT}')
++out=Path(__file__).parent
++status_path=out/'isolated_status.json'
++status=json.loads(status_path.read_text()) if status_path.exists() else []
++results=[]
++for case in status:
++    if not case.get('complete'):
++        continue
++    d=Path(case['result_directory'])
++    text=re.sub(r'\x1b\[[0-9;]*m','',(d/'act_eval_client.log').read_text())
++    seed=int(re.search(r'current seed: (\d+)',text).group(1))
++    result=root/re.search(r'Data has been saved to (.+/_result.txt)',text).group(1)
++    video=result.with_name('episode0.mp4')
++    records=[json.loads(line) for line in (d/'object_trace.jsonl').read_text().splitlines()]
++    steps=records[-1]['step']
++    assert [r['step'] for r in records]==list(range(steps+1))
++    assert case['success'] or steps==800
++    p=np.array([[r['red'],r['green']] for r in records])
++    probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-count_frames','-show_entries','stream=width,height,duration,nb_read_frames','-of','json',str(video)]))['streams'][0]
++    row={'case':case['seed_argument'],'scene_seed':seed,'success':case['success'],'steps':steps,'video':str(video),'video_metadata':probe,'red_max_height_increase_cm':float((p[:,0,2].max()-p[0,0,2])*100),'green_max_height_increase_cm':float((p[:,1,2].max()-p[0,1,2])*100),'red_final_xy_displacement_cm':float(np.linalg.norm(p[-1,0,:2]-p[0,0,:2])*100),'green_final_xy_displacement_cm':float(np.linalg.norm(p[-1,1,:2]-p[0,1,:2])*100),'red_min_target_xy_distance_cm':float(np.linalg.norm(p[:,0,:2]-[0,-.13],axis=1).min()*100),'initial_positions':p[0].tolist(),'final_positions':p[-1].tolist()}
++    results.append(row)
++    image_path=d/'video_frames.jpg'
++    if not image_path.exists():
++        count=int(probe['nb_read_frames'])
++        indices=sorted(set(min(x,count-1) for x in [0,40,80,120,160,200,250,300,400,500,600,count-1]))
++        sheet=Image.new('RGB',(960,264*4),'white');draw=ImageDraw.Draw(sheet)
++        cap=cv2.VideoCapture(str(video))
++        for i,n in enumerate(indices):
++            cap.set(cv2.CAP_PROP_POS_FRAMES,n);ok,frame=cap.read();assert ok
++            x=i%3*320;y=i//3*264
++            sheet.paste(Image.fromarray(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)),(x,y+24))
++            draw.text((x+6,y+6),f'Seed {seed} - frame {n}',fill='black')
++        cap.release();sheet.save(image_path)
++    print({k:round(v,2) if isinstance(v,float) else v for k,v in row.items() if k not in ('video_metadata','initial_positions','final_positions','video')})
++report={'planned_cases':5,'completed_cases':len(results),'successes':sum(r['success'] for r in results),'cases':results,'measurement_note':'Object position samples at action boundaries; height rise alone does not prove a secure grasp. Interrupted simulator attempts are not included as policy failures.'}
++(out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
+diff --git a/data/demo_train20/compare4000_20261004_112100/unseen_five/eval_act_five.sh b/data/demo_train20/compare4000_20261004_112100/unseen_five/eval_act_five.sh
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/unseen_five/eval_act_five.sh
+@@ -0,0 +1,49 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++source ${USER_HOME}/anaconda3/etc/profile.d/conda.sh
++conda activate RoboTwin
++cd ${ROBOTWIN_ROOT}
++
++export CUDA_VISIBLE_DEVICES=0
++export TORCH_HOME=${ROBOTWIN_ROOT}/data/model_cache/torch
++export MPLCONFIGDIR=/tmp/robotwin-matplotlib
++export ROBOTWIN_RAY_TRACING_DENOISER=none
++export PYTHONUNBUFFERED=1
++ACT_ACTION_DIM=$(python -c 'from XPolicyLab.utils.process_data import get_action_dim; print(get_action_dim("aloha_agilex"))')
++export ACT_ACTION_DIM
++
++policy_port=$(bash XPolicyLab/utils/get_free_port.sh)
++server_pid=""
++cleanup() {
++    if [[ -n "$server_pid" ]]; then
++        kill "$server_pid" 2>/dev/null || true
++        wait "$server_pid" 2>/dev/null || true
++    fi
++}
++trap cleanup EXIT
++trap 'exit 130' INT
++trap 'exit 143' TERM
++
++python XPolicyLab/setup_policy_server.py \
++    --config_path data/demo_train20/compare4000_20261004_112100/unseen_five/act_eval_config.yml \
++    --host 127.0.0.1 --port "$policy_port" \
++    > data/demo_train20/compare4000_20261004_112100/unseen_five/act_eval_server.log 2>&1 &
++server_pid=$!
++printf '%s\n' "$server_pid" > data/demo_train20/compare4000_20261004_112100/unseen_five/act_eval_server.pid
++bash XPolicyLab/utils/wait_for_policy_server.sh \
++    127.0.0.1 "$policy_port" "$server_pid" ACT 120
++
++python ${ROBOTWIN_ROOT}/data/demo_train20/compare4000_20261004_112100/unseen_five/trace_eval.py \
++    --bench_name demo_train20 \
++    --task_name stack_blocks_two \
++    --env_cfg_type aloha_agilex \
++    --policy_name ACT \
++    --host 127.0.0.1 --port "$policy_port" --protocol ws \
++    --eval_batch false \
++    --root_dir ${ROBOTWIN_ROOT} --device_id 0 \
++    --task_config demo_smoke --test_num 5 --seed 1 \
++    --expert_check true --instruction_type seen \
++    --additional_info 'ckpt_name=demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100,action_type=joint' \
++    > data/demo_train20/compare4000_20261004_112100/unseen_five/act_eval_client.log 2>&1
++tail -c 1600 data/demo_train20/compare4000_20261004_112100/unseen_five/act_eval_client.log
+diff --git a/data/demo_train20/compare4000_20261004_112100/unseen_five/run_isolated.py b/data/demo_train20/compare4000_20261004_112100/unseen_five/run_isolated.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/unseen_five/run_isolated.py
+@@ -0,0 +1,50 @@
++"""Five isolated evaluation cases with bounded retries for stalled simulations."""
++from pathlib import Path
++import json, os, re, shutil, signal, subprocess, time
++root=Path('${ROBOTWIN_ROOT}')
++out=Path(__file__).parent
++script_template=(out/'eval_act_five.sh').read_text()
++trace_template=(out/'trace_eval.py').read_text()
++summary=[]
++for seed_arg in range(1,6):
++    case={'seed_argument':seed_arg,'starting_scene_seed':100000*(1+seed_arg),'attempts':[]}
++    summary.append(case)
++    for attempt in range(1,3):
++        d=out/f'case_{seed_arg}_attempt_{attempt}'
++        d.mkdir()
++        shutil.copyfile(out/'act_eval_config.yml',d/'act_eval_config.yml')
++        (d/'trace_eval.py').write_text(trace_template)
++        script=script_template.replace(str(out.relative_to(root)),str(d.relative_to(root)))
++        script=script.replace('--test_num 5 --seed 1',f'--test_num 1 --seed {seed_arg}')
++        (d/'run.sh').write_text(script)
++        print(f'START case={seed_arg} attempt={attempt}',flush=True)
++        reason=None
++        with (d/'launcher.log').open('w') as log:
++            process=subprocess.Popen(['bash',str(d/'run.sh')],cwd=root,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++            started=time.time()
++            while process.poll() is None:
++                time.sleep(5)
++                trace=d/'object_trace.jsonl'
++                last=trace.stat().st_mtime if trace.exists() and trace.stat().st_size else started
++                limit=120 if trace.exists() and trace.stat().st_size else 240
++                if time.time()-last>limit or time.time()-started>600:
++                    reason='no_action_progress_timeout' if time.time()-last>limit else 'case_wall_time_timeout'
++                    os.killpg(process.pid,signal.SIGTERM)
++                    try: process.wait(timeout=15)
++                    except subprocess.TimeoutExpired:
++                        os.killpg(process.pid,signal.SIGKILL);process.wait()
++                    break
++        s=(d/'act_eval_client.log').read_text() if (d/'act_eval_client.log').exists() else ''
++        s=re.sub(r'\x1b\[[0-9;]*m','',s)
++        result=re.search(r'Final success rate: (\d+)/1 =',s)
++        complete=process.returncode==0 and result is not None and 'Policy rollout error' not in s
++        entry={'directory':str(d),'exit_code':process.returncode,'complete':complete,'interruption_reason':reason}
++        case['attempts'].append(entry)
++        if complete:
++            case.update(complete=True,success=bool(int(result.group(1))),result_directory=str(d))
++        print(f'END case={seed_arg} attempt={attempt} complete={complete} reason={reason}',flush=True)
++        (out/'isolated_status.json').write_text(json.dumps(summary,indent=2)+'\n')
++        if complete: break
++    case.setdefault('complete',False)
++    (out/'isolated_status.json').write_text(json.dumps(summary,indent=2)+'\n')
++print('ALL_CASES_FINISHED',flush=True)
+diff --git a/data/demo_train20/compare4000_20261004_112100/unseen_five/trace_eval.py b/data/demo_train20/compare4000_20261004_112100/unseen_five/trace_eval.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train20/compare4000_20261004_112100/unseen_five/trace_eval.py
+@@ -0,0 +1,69 @@
++"""Read-only pose tracing around the unchanged evaluation action executor."""
++import faulthandler
++import json
++import runpy
++import sys
++from pathlib import Path
++
++root = Path('${ROBOTWIN_ROOT}')
++sys.path.insert(0, str(root))
++faulthandler.dump_traceback_later(180, repeat=True)
++from envs.stack_blocks_two import stack_blocks_two
++
++# Diagnostic: serialize camera rendering/readback while retaining the same
++# renderer, cameras, image conversion, policy and action execution.
++import numpy as np
++from envs.camera.camera import Camera
++original_get_rgba = Camera.get_rgba
++
++def serial_update_picture(self):
++    cameras = []
++    if self.collect_wrist_camera:
++        cameras.extend([('left_camera', self.left_camera), ('right_camera', self.right_camera)])
++    cameras.extend(zip(self.static_camera_name, self.static_camera_list))
++    cached = {}
++    for name, camera in cameras:
++        camera.take_picture()
++        rgba = camera.get_picture('Color')
++        if name != 'head_camera' or self.collect_head_camera:
++            cached[name] = {'rgba': (rgba * 255).clip(0, 255).astype('uint8')}
++    self._serial_rgba = cached
++    if not getattr(self, '_serial_verified', False):
++        reference = original_get_rgba(self)
++        assert reference.keys() == cached.keys()
++        assert all(np.array_equal(reference[k]['rgba'], cached[k]['rgba']) for k in reference)
++        self._serial_verified = True
++        print('SERIAL_CAMERA_CAPTURE: cached images exactly match original RGBA getter', flush=True)
++
++def cached_get_rgba(self):
++    cached = getattr(self, '_serial_rgba', None)
++    return original_get_rgba(self) if cached is None else cached
++
++Camera.update_picture = serial_update_picture
++Camera.get_rgba = cached_get_rgba
++
++original_take_action = stack_blocks_two.take_action
++trace = Path(__file__).with_name('object_trace.jsonl').open('x', buffering=1)
++def record(task, phase):
++    row = {
++        'episode': int(task.test_num),
++        'step': int(task.take_action_cnt),
++        'phase': phase,
++        'red': task.block1.get_pose().p.tolist(),
++        'green': task.block2.get_pose().p.tolist(),
++        'left_gripper_command': float(task.robot.get_left_gripper_val()),
++        'right_gripper_command': float(task.robot.get_right_gripper_val()),
++        'success': bool(task.eval_success),
++    }
++    trace.write(json.dumps(row) + '\n')
++def traced_take_action(self, action, action_type='qpos'):
++    if self.take_action_cnt == 0:
++        record(self, 'initial')
++    result = original_take_action(self, action, action_type=action_type)
++    record(self, 'after_action')
++    return result
++stack_blocks_two.take_action = traced_take_action
++try:
++    runpy.run_path(str(root/'scripts/eval_policy_xpolicylab.py'), run_name='__main__')
++finally:
++    trace.close()
+diff --git a/data/demo_train50/train4000_20261004_232142/compare_results.py b/data/demo_train50/train4000_20261004_232142/compare_results.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/compare_results.py
+@@ -0,0 +1,11 @@
++from pathlib import Path
++import json,hashlib,numpy as np
++out=Path(__file__).parent;m=json.loads((out/'experiment.json').read_text());old=Path(m['source_experiment_dir']);source=Path(m['source_checkpoint_dir'])
++for name,sha in m['source_sha256'].items():assert hashlib.sha256((source/name).read_bytes()).hexdigest()==sha
++before=json.loads((old/'evaluation/results.json').read_text());after=json.loads((out/'evaluation/results.json').read_text());by_seed={r['scene_seed']:r for r in before['cases']};pairs=[]
++for r in after['cases']:
++ b=by_seed[r['scene_seed']];error=float(np.max(np.abs(np.array(b['initial_positions'])-np.array(r['initial_positions']))));assert error<1e-5
++ fields=['success','steps','red_max_height_increase_cm','green_max_height_increase_cm','red_min_target_xy_distance_cm','video']
++ pairs.append({'scene_seed':r['scene_seed'],'initial_pose_max_error':error,'epoch2000':{k:b[k] for k in fields},'epoch4000':{k:r[k] for k in fields}})
++report={'epoch2000_successes':before['successes'],'epoch4000_successes':after['successes'],'completed_cases':after['completed_cases'],'source_checkpoint_unchanged':True,'pairs':pairs,'note':'Identical unseen scene seeds and initial positions; height increases are motion proxies, not proof of a secure grasp. Warm start resets optimizer and RNG.'}
++(out/'comparison_2000_4000.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))
+diff --git a/data/demo_train50/train4000_20261004_232142/evaluation/analyze_completed.py b/data/demo_train50/train4000_20261004_232142/evaluation/analyze_completed.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/evaluation/analyze_completed.py
+@@ -0,0 +1,42 @@
++"""Summarize completed rollouts only; retain interrupted attempts separately."""
++from pathlib import Path
++import json, re, subprocess
++import numpy as np
++import cv2
++from PIL import Image, ImageDraw
++root=Path('${ROBOTWIN_ROOT}')
++out=Path(__file__).parent
++status_path=out/'isolated_status.json'
++status=json.loads(status_path.read_text()) if status_path.exists() else []
++results=[]
++for case in status:
++    if not case.get('complete'):
++        continue
++    d=Path(case['result_directory'])
++    text=re.sub(r'\x1b\[[0-9;]*m','',(d/'act_eval_client.log').read_text())
++    seed=int(re.search(r'current seed: (\d+)',text).group(1))
++    result=root/re.search(r'Data has been saved to (.+/_result.txt)',text).group(1)
++    video=result.with_name('episode0.mp4')
++    records=[json.loads(line) for line in (d/'object_trace.jsonl').read_text().splitlines()]
++    steps=records[-1]['step']
++    assert [r['step'] for r in records]==list(range(steps+1))
++    assert case['success'] or steps==800
++    p=np.array([[r['red'],r['green']] for r in records])
++    probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-count_frames','-show_entries','stream=width,height,duration,nb_read_frames','-of','json',str(video)]))['streams'][0]
++    row={'case':case['seed_argument'],'scene_seed':seed,'success':case['success'],'steps':steps,'video':str(video),'video_metadata':probe,'red_max_height_increase_cm':float((p[:,0,2].max()-p[0,0,2])*100),'green_max_height_increase_cm':float((p[:,1,2].max()-p[0,1,2])*100),'red_final_xy_displacement_cm':float(np.linalg.norm(p[-1,0,:2]-p[0,0,:2])*100),'green_final_xy_displacement_cm':float(np.linalg.norm(p[-1,1,:2]-p[0,1,:2])*100),'red_min_target_xy_distance_cm':float(np.linalg.norm(p[:,0,:2]-[0,-.13],axis=1).min()*100),'initial_positions':p[0].tolist(),'final_positions':p[-1].tolist()}
++    results.append(row)
++    image_path=d/'video_frames.jpg'
++    if not image_path.exists():
++        count=int(probe['nb_read_frames'])
++        indices=sorted(set(min(x,count-1) for x in [0,40,80,120,160,200,250,300,400,500,600,count-1]))
++        sheet=Image.new('RGB',(960,264*4),'white');draw=ImageDraw.Draw(sheet)
++        cap=cv2.VideoCapture(str(video))
++        for i,n in enumerate(indices):
++            cap.set(cv2.CAP_PROP_POS_FRAMES,n);ok,frame=cap.read();assert ok
++            x=i%3*320;y=i//3*264
++            sheet.paste(Image.fromarray(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)),(x,y+24))
++            draw.text((x+6,y+6),f'Seed {seed} - frame {n}',fill='black')
++        cap.release();sheet.save(image_path)
++    print({k:round(v,2) if isinstance(v,float) else v for k,v in row.items() if k not in ('video_metadata','initial_positions','final_positions','video')})
++report={'planned_cases':5,'completed_cases':len(results),'successes':sum(r['success'] for r in results),'cases':results,'measurement_note':'Object position samples at action boundaries; height rise alone does not prove a secure grasp. Interrupted simulator attempts are not included as policy failures.'}
++(out/'results.json').write_text(json.dumps(report,indent=2)+'\n')
+diff --git a/data/demo_train50/train4000_20261004_232142/evaluation/eval_act_five.sh b/data/demo_train50/train4000_20261004_232142/evaluation/eval_act_five.sh
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/evaluation/eval_act_five.sh
+@@ -0,0 +1,49 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++source ${USER_HOME}/anaconda3/etc/profile.d/conda.sh
++conda activate RoboTwin
++cd ${ROBOTWIN_ROOT}
++
++export CUDA_VISIBLE_DEVICES=0
++export TORCH_HOME=${ROBOTWIN_ROOT}/data/model_cache/torch
++export MPLCONFIGDIR=/tmp/robotwin-matplotlib
++export ROBOTWIN_RAY_TRACING_DENOISER=none
++export PYTHONUNBUFFERED=1
++ACT_ACTION_DIM=$(python -c 'from XPolicyLab.utils.process_data import get_action_dim; print(get_action_dim("aloha_agilex"))')
++export ACT_ACTION_DIM
++
++policy_port=$(bash XPolicyLab/utils/get_free_port.sh)
++server_pid=""
++cleanup() {
++    if [[ -n "$server_pid" ]]; then
++        kill "$server_pid" 2>/dev/null || true
++        wait "$server_pid" 2>/dev/null || true
++    fi
++}
++trap cleanup EXIT
++trap 'exit 130' INT
++trap 'exit 143' TERM
++
++python XPolicyLab/setup_policy_server.py \
++    --config_path data/demo_train50/train4000_20261004_232142/evaluation/act_eval_config.yml \
++    --host 127.0.0.1 --port "$policy_port" \
++    > data/demo_train50/train4000_20261004_232142/evaluation/act_eval_server.log 2>&1 &
++server_pid=$!
++printf '%s\n' "$server_pid" > data/demo_train50/train4000_20261004_232142/evaluation/act_eval_server.pid
++bash XPolicyLab/utils/wait_for_policy_server.sh \
++    127.0.0.1 "$policy_port" "$server_pid" ACT 120
++
++python ${ROBOTWIN_ROOT}/data/demo_train50/train4000_20261004_232142/evaluation/trace_eval.py \
++    --bench_name demo_train50 \
++    --task_name stack_blocks_two \
++    --env_cfg_type aloha_agilex \
++    --policy_name ACT \
++    --host 127.0.0.1 --port "$policy_port" --protocol ws \
++    --eval_batch false \
++    --root_dir ${ROBOTWIN_ROOT} --device_id 0 \
++    --task_config demo_smoke --test_num 5 --seed 1 \
++    --expert_check true --instruction_type seen \
++    --additional_info 'ckpt_name=demo_train50-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_232142,action_type=joint' \
++    > data/demo_train50/train4000_20261004_232142/evaluation/act_eval_client.log 2>&1
++tail -c 1600 data/demo_train50/train4000_20261004_232142/evaluation/act_eval_client.log
+diff --git a/data/demo_train50/train4000_20261004_232142/evaluation/run_isolated.py b/data/demo_train50/train4000_20261004_232142/evaluation/run_isolated.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/evaluation/run_isolated.py
+@@ -0,0 +1,50 @@
++"""Five isolated evaluation cases with bounded retries for stalled simulations."""
++from pathlib import Path
++import json, os, re, shutil, signal, subprocess, time
++root=Path('${ROBOTWIN_ROOT}')
++out=Path(__file__).parent
++script_template=(out/'eval_act_five.sh').read_text()
++trace_template=(out/'trace_eval.py').read_text()
++summary=[]
++for seed_arg in range(1,6):
++    case={'seed_argument':seed_arg,'starting_scene_seed':100000*(1+seed_arg),'attempts':[]}
++    summary.append(case)
++    for attempt in range(1,3):
++        d=out/f'case_{seed_arg}_attempt_{attempt}'
++        d.mkdir()
++        shutil.copyfile(out/'act_eval_config.yml',d/'act_eval_config.yml')
++        (d/'trace_eval.py').write_text(trace_template)
++        script=script_template.replace(str(out.relative_to(root)),str(d.relative_to(root)))
++        script=script.replace('--test_num 5 --seed 1',f'--test_num 1 --seed {seed_arg}')
++        (d/'run.sh').write_text(script)
++        print(f'START case={seed_arg} attempt={attempt}',flush=True)
++        reason=None
++        with (d/'launcher.log').open('w') as log:
++            process=subprocess.Popen(['bash',str(d/'run.sh')],cwd=root,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++            started=time.time()
++            while process.poll() is None:
++                time.sleep(5)
++                trace=d/'object_trace.jsonl'
++                last=trace.stat().st_mtime if trace.exists() and trace.stat().st_size else started
++                limit=120 if trace.exists() and trace.stat().st_size else 240
++                if time.time()-last>limit or time.time()-started>600:
++                    reason='no_action_progress_timeout' if time.time()-last>limit else 'case_wall_time_timeout'
++                    os.killpg(process.pid,signal.SIGTERM)
++                    try: process.wait(timeout=15)
++                    except subprocess.TimeoutExpired:
++                        os.killpg(process.pid,signal.SIGKILL);process.wait()
++                    break
++        s=(d/'act_eval_client.log').read_text() if (d/'act_eval_client.log').exists() else ''
++        s=re.sub(r'\x1b\[[0-9;]*m','',s)
++        result=re.search(r'Final success rate: (\d+)/1 =',s)
++        complete=process.returncode==0 and result is not None and 'Policy rollout error' not in s
++        entry={'directory':str(d),'exit_code':process.returncode,'complete':complete,'interruption_reason':reason}
++        case['attempts'].append(entry)
++        if complete:
++            case.update(complete=True,success=bool(int(result.group(1))),result_directory=str(d))
++        print(f'END case={seed_arg} attempt={attempt} complete={complete} reason={reason}',flush=True)
++        (out/'isolated_status.json').write_text(json.dumps(summary,indent=2)+'\n')
++        if complete: break
++    case.setdefault('complete',False)
++    (out/'isolated_status.json').write_text(json.dumps(summary,indent=2)+'\n')
++print('ALL_CASES_FINISHED',flush=True)
+diff --git a/data/demo_train50/train4000_20261004_232142/evaluation/trace_eval.py b/data/demo_train50/train4000_20261004_232142/evaluation/trace_eval.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/evaluation/trace_eval.py
+@@ -0,0 +1,69 @@
++"""Read-only pose tracing around the unchanged evaluation action executor."""
++import faulthandler
++import json
++import runpy
++import sys
++from pathlib import Path
++
++root = Path('${ROBOTWIN_ROOT}')
++sys.path.insert(0, str(root))
++faulthandler.dump_traceback_later(180, repeat=True)
++from envs.stack_blocks_two import stack_blocks_two
++
++# Diagnostic: serialize camera rendering/readback while retaining the same
++# renderer, cameras, image conversion, policy and action execution.
++import numpy as np
++from envs.camera.camera import Camera
++original_get_rgba = Camera.get_rgba
++
++def serial_update_picture(self):
++    cameras = []
++    if self.collect_wrist_camera:
++        cameras.extend([('left_camera', self.left_camera), ('right_camera', self.right_camera)])
++    cameras.extend(zip(self.static_camera_name, self.static_camera_list))
++    cached = {}
++    for name, camera in cameras:
++        camera.take_picture()
++        rgba = camera.get_picture('Color')
++        if name != 'head_camera' or self.collect_head_camera:
++            cached[name] = {'rgba': (rgba * 255).clip(0, 255).astype('uint8')}
++    self._serial_rgba = cached
++    if not getattr(self, '_serial_verified', False):
++        reference = original_get_rgba(self)
++        assert reference.keys() == cached.keys()
++        assert all(np.array_equal(reference[k]['rgba'], cached[k]['rgba']) for k in reference)
++        self._serial_verified = True
++        print('SERIAL_CAMERA_CAPTURE: cached images exactly match original RGBA getter', flush=True)
++
++def cached_get_rgba(self):
++    cached = getattr(self, '_serial_rgba', None)
++    return original_get_rgba(self) if cached is None else cached
++
++Camera.update_picture = serial_update_picture
++Camera.get_rgba = cached_get_rgba
++
++original_take_action = stack_blocks_two.take_action
++trace = Path(__file__).with_name('object_trace.jsonl').open('x', buffering=1)
++def record(task, phase):
++    row = {
++        'episode': int(task.test_num),
++        'step': int(task.take_action_cnt),
++        'phase': phase,
++        'red': task.block1.get_pose().p.tolist(),
++        'green': task.block2.get_pose().p.tolist(),
++        'left_gripper_command': float(task.robot.get_left_gripper_val()),
++        'right_gripper_command': float(task.robot.get_right_gripper_val()),
++        'success': bool(task.eval_success),
++    }
++    trace.write(json.dumps(row) + '\n')
++def traced_take_action(self, action, action_type='qpos'):
++    if self.take_action_cnt == 0:
++        record(self, 'initial')
++    result = original_take_action(self, action, action_type=action_type)
++    record(self, 'after_action')
++    return result
++stack_blocks_two.take_action = traced_take_action
++try:
++    runpy.run_path(str(root/'scripts/eval_policy_xpolicylab.py'), run_name='__main__')
++finally:
++    trace.close()
+diff --git a/data/demo_train50/train4000_20261004_232142/run_pipeline.py b/data/demo_train50/train4000_20261004_232142/run_pipeline.py
+new file mode 100644
+--- /dev/null
++++ b/data/demo_train50/train4000_20261004_232142/run_pipeline.py
+@@ -0,0 +1,27 @@
++"""Run training, strict checkpoint validation, and five matched unseen rollouts."""
++from pathlib import Path
++import json,os,subprocess,sys,datetime
++out=Path(__file__).parent;root=Path('${ROBOTWIN_ROOT}');python=sys.executable
++manifest=out/'experiment.json';m=json.loads(manifest.read_text());ckpt=Path(m['checkpoint_dir'])
++def phase(value,**extra):
++ m.update(phase=value,updated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),**extra)
++ temp=manifest.with_suffix('.json.tmp');temp.write_text(json.dumps(m,indent=2));temp.replace(manifest)
++def run(command,log,cwd):
++ with log.open('w') as f:subprocess.run(command,cwd=cwd,stdout=f,stderr=subprocess.STDOUT,check=True)
++os.environ.update(CUDA_VISIBLE_DEVICES='0',TORCH_HOME=str(root/'data/model_cache/torch'),MPLCONFIGDIR='/tmp/robotwin-matplotlib',ROBOTWIN_RAY_TRACING_DENOISER='none',PYTHONUNBUFFERED='1')
++os.environ['ACT_ACTION_DIM']=subprocess.check_output(['bash',str(root/'XPolicyLab/utils/get_action_dim.sh'),str(root),'aloha_agilex'],text=True).strip()
++try:
++ phase('training')
++ run([python]+m['training_command'],ckpt/'train.log',root/'XPolicyLab/policy/ACT')
++ metrics=[json.loads(line) for line in (ckpt/'training_metrics.jsonl').read_text().splitlines()]
++ assert len(metrics)==2000 and metrics[-1]['epoch']==4000 and metrics[-1]['optimizer_steps']==160000
++ phase('checkpoint_validation',training_elapsed_seconds=metrics[-1]['elapsed_seconds'])
++ run([python,str(root/'scripts/validate_act_checkpoint.py'),'--ckpt-dir',str(ckpt),'--env-cfg-type','aloha_agilex','--action-type','joint'],out/'checkpoint_validation.log',root)
++ phase('evaluating')
++ run([python,str(out/'evaluation/run_isolated.py')],out/'evaluation/launcher.log',root)
++ run([python,str(out/'evaluation/analyze_completed.py')],out/'evaluation/analysis.log',root)
++ results=json.loads((out/'evaluation/results.json').read_text())
++ run([python,str(out/'compare_results.py')],out/'comparison.log',root)
++ phase('completed' if results['completed_cases']==5 else 'evaluation_incomplete',evaluation_results=str(out/'evaluation/results.json'),completed_evaluation_cases=results['completed_cases'],successes=results['successes'])
++except Exception as error:
++ phase('failed',error=str(error));raise
