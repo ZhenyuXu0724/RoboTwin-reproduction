@@ -1,0 +1,1243 @@
+diff --git a/policy/ACT/README.md b/policy/ACT/README.md
+index 04f26be..49fac69 100644
+--- a/policy/ACT/README.md
++++ b/policy/ACT/README.md
+@@ -26,6 +26,24 @@ bash process_data.sh <bench_name> <ckpt_name> <env_cfg_type> <action_type>
+ bash process_data.sh RoboDojo stack_bowls arx_x5 joint
+ ```
+ 
++The converter keeps the paired state/action indices and writes
++`action_start_offset=0` into each processed HDF5 file. Regenerate existing
++processed XPolicyLab data to include this metadata; files without it retain
++the legacy `sim`-based alignment behavior. The loader computes normalization
++statistics from training episodes only and shares a padding length large
++enough for both splits. For a reproducible standalone data check, call
++`load_data(..., split_seed=1)`; omitting `split_seed` preserves the caller's
++NumPy random-state behavior.
++
++For a fixed or stratified split, add `split_file` to the task entry in
++`TASK_CONFIGS.json` (an absolute path is recommended). Its JSON must contain
++`train_episode_ids` and `validation_episode_ids`, two nonempty integer lists
++covering all episode IDs exactly once. The trainer uses this split instead of
++random partitioning and records its path and actual membership in
++`training_config.json`. Standalone checks can pass `load_data(..., split_file=...)`.
++Normalization still uses only training episodes. Re-running `process_data.sh`
++regenerates the task entry, so restore `split_file` before training afterward.
++
+ ## Training
+ 
+ ```bash
+@@ -38,6 +56,23 @@ bash train.sh RoboDojo cotrain arx_x5 joint 0 0
+ 
+ Checkpoints land in `checkpoints/<bench_name>-<ckpt_name>-<env_cfg_type>-<action_type>-<seed>/`; at eval time `ckpt_name` may be the short run name (auto-combined into that directory name), the full run-directory name, or a path to a checkpoint directory. `train.sh` derives the action dimension from `env_cfg_type` (via `utils/get_action_dim.sh`) and exports it as `ACT_ACTION_DIM` before launching `imitate_episodes.py`.
+ 
++Training also saves `training_config.json`, `training_metrics.jsonl`, and a
++single-sample `checkpoint_reference.npz` alongside the weights and normalization
++statistics. Metrics include optimizer-step counts and finite gradient norms;
++`validation_before_epoch` is measured before that epoch's updates. The reference
++contains normalized inputs and the final policy's inference output for comparison
++after loading in a fresh process. Checkpoints contain policy weights, not optimizer
++state for resuming training.
++
++For a weights-only continuation, invoke `imitate_episodes.py` with the original
++training arguments, a new `--ckpt_dir`, and `--warm_start_dir <completed-run>`.
++`--num_epochs` is the cumulative target (for example, 4000 after a completed
++2000-epoch run performs 2000 additional epochs). Architecture, data split,
++normalization, seed, and training settings must match. The optimizer and random
++state restart; this is not an exact resume. The new configuration records this
++provenance, and metrics distinguish cumulative optimizer steps from steps in the
++current run. Existing training output directories are rejected.
++
+ ## Evaluation
+ 
+ ```bash
+@@ -56,3 +91,9 @@ bash eval.sh RoboDojo stack_bowls RoboDojo-cotrain-arx_x5-joint-0 arx_x5 joint 0
+ `deploy.yml` keys to check before evaluation: `ckpt_setting`, `kl_weight`, `chunk_size`, `hidden_dim`, `dim_feedforward`, `temporal_agg`, `device`, `ckpt_dir`, `policy_class`, `num_epochs`, `position_embedding`, `lr_backbone`.
+ 
+ `ACT_ACTION_DIM` is the only adapter-specific environment variable; `train.sh` and `setup_eval_policy_server.sh` set it automatically from `env_cfg_type`, and the model code reads it for the state/action dimension.
++
++New training defaults to `--decoder_output_layer -1`, so the action head reads the final decoder layer and all configured decoder layers receive loss gradients. Historical checkpoints used layer `0`. Deployment reads this setting from `training_config.json`, treating missing metadata as historical behavior and rejecting an explicit conflicting setting. Keep the training configuration with exported checkpoints; changing the decoder output of an old checkpoint does not repair its untrained layers.
++
++Action losses divide by the number of valid targets, excluding padding from the denominator. `--gripper_indices` supplies the end-effector action indices from the registered robot layout, and `--gripper_weight` controls their relative weight. Metrics retain unweighted `l1`, `arm_l1`, and `gripper_l1` separately from `weighted_l1`; validation also reports zero-latent deployment predictions as `prior_*`.
++
++Optional `--critical_sampling_ratio` mixes uniform training-frame sampling with critical phases from `--phase_samples_file`. That JSON contains `episode_frames` and optional `episode_groups`, keyed by episode ID. Critical draws choose a phase uniformly, then a frame uniformly within it. Validation episodes retain uniform sampling and never enter the training sampler. The training directory records a first-step decoder gradient audit and checks every decoder layer when the final output is selected.
+diff --git a/policy/ACT/detr/act_policy.py b/policy/ACT/detr/act_policy.py
+index c001553..dc6ebf9 100644
+--- a/policy/ACT/detr/act_policy.py
++++ b/policy/ACT/detr/act_policy.py
+@@ -3,6 +3,7 @@ import os
+ import torch
+ import numpy as np
+ import pickle
++import json
+ from torch.nn import functional as F
+ import torchvision.transforms as transforms
+ 
+@@ -20,6 +21,11 @@ import IPython
+ 
+ e = IPython.embed
+ 
++try:
++    from ..losses import action_losses
++except ImportError:
++    from losses import action_losses
++
+ 
+ class ACTPolicy(nn.Module):
+ 
+@@ -29,6 +35,8 @@ class ACTPolicy(nn.Module):
+         self.model = model  # CVAE decoder
+         self.optimizer = optimizer
+         self.kl_weight = args_override["kl_weight"]
++        self.gripper_indices = args_override.get('gripper_indices', [])
++        self.gripper_weight = args_override.get('gripper_weight', 1.0)
+ 
+     def __call__(self, qpos, image, actions=None, is_pad=None):
+         env_state = None
+@@ -39,12 +47,10 @@ class ACTPolicy(nn.Module):
+             is_pad = is_pad[:, :self.model.num_queries]
+             a_hat, is_pad_hat, (mu, logvar) = self.model(qpos, image, env_state, actions, is_pad)
+             total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
+-            loss_dict = dict()
+-            all_l1 = F.l1_loss(actions, a_hat, reduction="none")
+-            l1 = (all_l1 * ~is_pad.unsqueeze(-1)).mean()
+-            loss_dict["l1"] = l1
++            loss_dict = action_losses(a_hat, actions, is_pad, self.gripper_indices,
++                                      self.gripper_weight)
+             loss_dict["kl"] = total_kld[0]
+-            loss_dict["loss"] = loss_dict["l1"] + loss_dict["kl"] * self.kl_weight
++            loss_dict["loss"] = loss_dict["weighted_l1"] + loss_dict["kl"] * self.kl_weight
+             return loss_dict
+         else:  # inference time
+             a_hat, _, (_, _) = self.model(qpos, image, env_state)  # no action, sample from prior
+@@ -53,6 +59,13 @@ class ACTPolicy(nn.Module):
+     def configure_optimizers(self):
+         return self.optimizer
+ 
++    def deployment_loss(self, qpos, image, actions, is_pad):
++        prediction = self(qpos, image)
++        result = action_losses(prediction, actions[:, :self.model.num_queries],
++                               is_pad[:, :self.model.num_queries], self.gripper_indices,
++                               self.gripper_weight)
++        return {'prior_' + key: value for key, value in result.items()}
++
+ 
+ class CNNMLPPolicy(nn.Module):
+ 
+@@ -107,6 +120,17 @@ class ACT:
+                 "device": "cuda:0",
+             }
+ 
++        # Architecture selection is part of checkpoint identity. Missing metadata
++        # denotes the historical first-layer model, never the repaired model.
++        training_path = os.path.join(args_override.get('ckpt_dir', ''), 'training_config.json')
++        if os.path.isfile(training_path):
++            with open(training_path) as f:
++                training = json.load(f)
++            layer = training['policy_config'].get('decoder_output_layer', 0)
++            if 'decoder_output_layer' in args_override and args_override['decoder_output_layer'] != layer:
++                raise ValueError('Decoder output setting conflicts with checkpoint training metadata')
++            args_override['decoder_output_layer'] = layer
++            model_cfg.decoder_output_layer = layer
+         self.camera_names = model_cfg.camera_names
+ 
+         self.policy = ACTPolicy(args_override, model_cfg)
+@@ -183,7 +207,9 @@ class ACT:
+         for cam_name in self.camera_names:
+             curr_images.append(obs[cam_name])
+         curr_image = np.stack(curr_images, axis=0)
+-        curr_image = torch.from_numpy(curr_image).float().to(self.device).unsqueeze(0)
++        # Match the training DataLoader's contiguous NCHW layout, so identical
++        # pixels do not select a different convolution path during deployment.
++        curr_image = torch.from_numpy(curr_image).float().contiguous().to(self.device).unsqueeze(0)
+ 
+         with torch.no_grad():
+             # Only query the policy at specified intervals - exactly like imitate_episodes.py
+@@ -213,4 +239,4 @@ class ACT:
+         action = self.post_process(raw_action)
+ 
+         self.t += 1
+-        return action
+\ No newline at end of file
++        return action
+diff --git a/policy/ACT/detr/main.py b/policy/ACT/detr/main.py
+index ce2fcb7..ad83ac9 100644
+--- a/policy/ACT/detr/main.py
++++ b/policy/ACT/detr/main.py
+@@ -13,6 +13,11 @@ e = IPython.embed
+ 
+ def get_args_parser():
+     parser = argparse.ArgumentParser("Set transformer detector", add_help=False)
++    parser.add_argument('--decoder_output_layer', type=int, default=0)
++    parser.add_argument('--gripper_indices', type=int, nargs='*', default=[])
++    parser.add_argument('--gripper_weight', type=float, default=1.0)
++    parser.add_argument('--critical_sampling_ratio', type=float, default=0.0)
++    parser.add_argument('--phase_samples_file', type=str)
+     parser.add_argument("--lr", default=1e-4, type=float)  # will be overridden
+     parser.add_argument("--lr_backbone", default=1e-5, type=float)  # will be overridden
+     parser.add_argument("--batch_size", default=2, type=int)  # not used
+@@ -111,6 +116,7 @@ def get_args_parser():
+     parser.add_argument("--task_name", action="store", type=str, help="task_name", required=True)
+     parser.add_argument("--seed", action="store", type=int, help="seed", required=True)
+     parser.add_argument("--num_epochs", action="store", type=int, help="num_epochs", required=True)
++    parser.add_argument("--warm_start_dir", type=str)
+     parser.add_argument("--kl_weight", action="store", type=int, help="KL Weight", required=False)
+     parser.add_argument("--chunk_size", action="store", type=int, help="chunk_size", required=False)
+     parser.add_argument("--ckpt_setting", action="store", type=str, help="chunk_size", required=False)
+diff --git a/policy/ACT/detr/models/detr_vae.py b/policy/ACT/detr/models/detr_vae.py
+index 6d13bd3..820801b 100644
+--- a/policy/ACT/detr/models/detr_vae.py
++++ b/policy/ACT/detr/models/detr_vae.py
+@@ -37,7 +37,8 @@ def get_sinusoid_encoding_table(n_position, d_hid):
+ class DETRVAE(nn.Module):
+     """ This is the DETR module that performs object detection """
+ 
+-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names):
++    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names,
++                 decoder_output_layer=0):
+         """ Initializes the model.
+         Parameters:
+             backbones: torch module of the backbone to be used. See backbone.py
+@@ -50,6 +51,10 @@ class DETRVAE(nn.Module):
+         super().__init__()
+         self.num_queries = num_queries
+         self.camera_names = camera_names
++        if not -transformer.decoder.num_layers <= decoder_output_layer < transformer.decoder.num_layers:
++            raise ValueError('decoder_output_layer is outside the decoder stack')
++        # Legacy checkpoints trained the first output; new training selects -1.
++        self.decoder_output_layer = decoder_output_layer
+         self.transformer = transformer
+         self.encoder = encoder
+         hidden_dim = transformer.d_model
+@@ -135,12 +140,12 @@ class DETRVAE(nn.Module):
+             src = torch.cat(all_cam_features, axis=3)
+             pos = torch.cat(all_cam_pos, axis=3)
+             hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input,
+-                                  self.additional_pos_embed.weight)[0]
++                                  self.additional_pos_embed.weight)[self.decoder_output_layer]
+         else:
+             qpos = self.input_proj_robot_state(qpos)
+             env_state = self.input_proj_env_state(env_state)
+             transformer_input = torch.cat([qpos, env_state], axis=1)  # seq length = 2
+-            hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[0]
++            hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[self.decoder_output_layer]
+         a_hat = self.action_head(hs)
+         is_pad_hat = self.is_pad_head(hs)
+         return a_hat, is_pad_hat, [mu, logvar]
+@@ -250,6 +255,7 @@ def build(args):
+         state_dim=state_dim,
+         num_queries=args.chunk_size,
+         camera_names=args.camera_names,
++        decoder_output_layer=getattr(args, 'decoder_output_layer', 0),
+     )
+ 
+     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+diff --git a/policy/ACT/detr/process_data.py b/policy/ACT/detr/process_data.py
+index 0133142..22b9c4b 100644
+--- a/policy/ACT/detr/process_data.py
++++ b/policy/ACT/detr/process_data.py
+@@ -69,6 +69,10 @@ def data_transform(path, episode_num, load_data_dir, save_dir, robot_action_dim_
+         hdf5path = os.path.join(save_dir, f"episode_{current_episode}.hdf5")
+ 
+         with h5py.File(hdf5path, "w") as f:
++            # XPolicyLab state/action pairs are already aligned at the same index.
++            f.attrs["action_start_offset"] = 0
++            if data.get("_attrs", {}).get("source_format") == "RoboTwin":
++                f.attrs["sim"] = True
+             f.create_dataset("action", data=np.array(actions, dtype=np.float32))
+             obs = f.create_group("observations")
+             obs.create_dataset("qpos", data=np.array(qpos, dtype=np.float32))
+diff --git a/policy/ACT/imitate_episodes.py b/policy/ACT/imitate_episodes.py
+index 9d87e43..f2499de 100644
+--- a/policy/ACT/imitate_episodes.py
++++ b/policy/ACT/imitate_episodes.py
+@@ -7,6 +7,8 @@ import torch
+ import numpy as np
+ import pickle
+ import argparse
++import json
++import time
+ 
+ import matplotlib
+ 
+@@ -65,6 +67,9 @@ def main(args):
+             "dec_layers": dec_layers,
+             "nheads": nheads,
+             "camera_names": camera_names,
++            "decoder_output_layer": args.get('decoder_output_layer', -1),
++            "gripper_indices": args.get('gripper_indices', []),
++            "gripper_weight": args.get('gripper_weight', 1.0),
+         }
+     elif policy_class == "CNNMLP":
+         policy_config = {
+@@ -94,11 +99,30 @@ def main(args):
+     }
+ 
+     train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train,
+-                                                           batch_size_val)
++                                                           batch_size_val, split_file=task_config.get("split_file"),
++                                                           critical_sampling_ratio=args.get('critical_sampling_ratio', 0.0),
++                                                           phase_samples_file=args.get('phase_samples_file'))
++    config['critical_sampling_ratio'] = args.get('critical_sampling_ratio', 0.0)
++    config['phase_samples_file'] = args.get('phase_samples_file')
++
++    if task_config.get("split_file"):
++        config["split_file"] = os.path.abspath(task_config["split_file"])
++
++    config["batch_size"] = batch_size_train
++    config["dataset_dir"] = os.path.abspath(dataset_dir)
++    config["train_episode_ids"] = train_dataloader.dataset.episode_ids.tolist()
++    config["validation_episode_ids"] = val_dataloader.dataset.episode_ids.tolist()
++
++    if args.get("warm_start_dir"):
++        prepare_warm_start(config, stats, args["warm_start_dir"])
++    if os.path.exists(os.path.join(ckpt_dir, "training_metrics.jsonl")):
++        raise FileExistsError(f"Use a new output directory: {ckpt_dir}")
+ 
+     # save dataset stats
+     if not os.path.isdir(ckpt_dir):
+         os.makedirs(ckpt_dir)
++    with open(os.path.join(ckpt_dir, "training_config.json"), "w") as f:
++        json.dump(config, f, indent=2)
+     stats_path = os.path.join(ckpt_dir, f"dataset_stats.pkl")
+     with open(stats_path, "wb") as f:
+         pickle.dump(stats, f)
+@@ -111,6 +135,42 @@ def main(args):
+     # print(f"Best ckpt, val loss {min_val_loss:.6f} @ epoch{best_epoch}")
+ 
+ 
++def prepare_warm_start(config, stats, source_dir):
++    """Continue final model weights with a fresh optimizer, preserving the experiment."""
++    source_dir = os.path.realpath(source_dir)
++    if source_dir == os.path.realpath(config["ckpt_dir"]):
++        raise ValueError("Warm start requires a separate output directory")
++    with open(os.path.join(source_dir, "training_config.json")) as f:
++        previous = json.load(f)
++    for key in ("policy_class", "policy_config", "state_dim", "camera_names", "lr",
++                "seed", "batch_size", "dataset_dir", "train_episode_ids",
++                "validation_episode_ids", "temporal_agg", "episode_len"):
++        if config[key] != previous[key]:
++            raise ValueError(f"Warm-start configuration differs: {key}")
++    for key, default in [('critical_sampling_ratio', 0.0), ('phase_samples_file', None)]:
++        if config.get(key, default) != previous.get(key, default):
++            raise ValueError(f'Warm-start configuration differs: {key}')
++    with open(os.path.join(source_dir, "dataset_stats.pkl"), "rb") as f:
++        previous_stats = pickle.load(f)
++    for key in ("action_mean", "action_std", "qpos_mean", "qpos_std"):
++        if not np.array_equal(stats[key], previous_stats[key]):
++            raise ValueError(f"Warm-start normalization differs: {key}")
++    with open(os.path.join(source_dir, "training_metrics.jsonl")) as f:
++        last_metrics = json.loads(list(f)[-1])
++    start_epoch = last_metrics["epoch"]
++    if start_epoch != previous["num_epochs"] or config["num_epochs"] <= start_epoch:
++        raise ValueError("Source must be a completed run; target epochs must be larger")
++    checkpoint = os.path.join(source_dir, "policy_last.ckpt")
++    if not os.path.isfile(checkpoint):
++        raise FileNotFoundError(checkpoint)
++    config.update(
++        start_epoch=start_epoch,
++        initial_optimizer_steps=last_metrics["optimizer_steps"],
++        warm_start={"checkpoint": checkpoint, "optimizer_reset": True,
++                    "random_state_reset": True, "source_dir": source_dir},
++    )
++
++
+ def make_policy(policy_class, policy_config):
+     if policy_class == "ACT":
+         policy = ACTPolicy(policy_config)
+@@ -161,48 +221,99 @@ def train_bc(train_dataloader, val_dataloader, config):
+     set_seed(seed)
+ 
+     policy = make_policy(policy_class, policy_config)
++    if config.get("warm_start"):
++        state = torch.load(config["warm_start"]["checkpoint"], map_location="cpu", weights_only=True)
++        policy.load_state_dict(state, strict=True)
++        del state
++        print("Warm start: model weights loaded; optimizer and random state are reset.", flush=True)
+     policy.cuda()
+     optimizer = make_optimizer(policy_class, policy)
++    torch.cuda.reset_peak_memory_stats()
++    training_start = time.monotonic()
++    initial_optimizer_steps = config.get("initial_optimizer_steps", 0)
++    optimizer_steps = initial_optimizer_steps
++    metrics_path = os.path.join(ckpt_dir, "training_metrics.jsonl")
++    with open(metrics_path, "w"):
++        pass
+ 
+-    train_history = []
+     validation_history = []
+     min_val_loss = np.inf
+     best_ckpt_info = None
+ 
+-    for epoch in tqdm(range(num_epochs)):
++    for epoch in tqdm(range(config.get("start_epoch", 0), num_epochs)):
+         # validation
+         with torch.inference_mode():
+             policy.eval()
+             epoch_dicts = []
+             for batch_idx, data in enumerate(val_dataloader):
+                 forward_dict = forward_pass(data, policy)
++                if hasattr(policy, 'deployment_loss'):
++                    image, qpos, actions, pad = [x.cuda() for x in data]
++                    forward_dict.update(policy.deployment_loss(qpos, image, actions, pad))
+                 epoch_dicts.append(forward_dict)
+             epoch_summary = compute_dict_mean(epoch_dicts)
+             validation_history.append(epoch_summary)
+ 
+             epoch_val_loss = epoch_summary["loss"]
++            if not torch.isfinite(epoch_val_loss):
++                raise FloatingPointError(f"Non-finite validation loss at epoch {epoch + 1}")
+             if epoch_val_loss < min_val_loss:
+                 min_val_loss = epoch_val_loss
+                 best_ckpt_info = (epoch, min_val_loss, deepcopy(policy.state_dict()))
+         summary_string = ""
+         for k, v in epoch_summary.items():
+             summary_string += f"{k}: {v.item():.3f} "
++        validation_metrics = {k: v.item() for k, v in epoch_summary.items()}
+ 
+         # training
+         policy.train()
+         optimizer.zero_grad()
++        gradient_norms = []
++        training_epoch_dicts = []
+         for batch_idx, data in enumerate(train_dataloader):
+             forward_dict = forward_pass(data, policy)
+             # backward
+             loss = forward_dict["loss"]
++            if not torch.isfinite(loss):
++                raise FloatingPointError(f"Non-finite training loss at epoch {epoch + 1}")
+             loss.backward()
++            if optimizer_steps == initial_optimizer_steps and hasattr(policy, 'model') and hasattr(policy.model, 'decoder_output_layer'):
++                decoder = policy.model.transformer.decoder
++                gradients = [sum(float(p.grad.detach().square().sum()) for p in layer.parameters()
++                                 if p.grad is not None) ** .5 for layer in decoder.layers]
++                if policy.model.decoder_output_layer == -1 and not all(np.isfinite(g) and g > 0 for g in gradients):
++                    raise AssertionError('Repaired decoder must receive nonzero gradients in every layer')
++                with open(os.path.join(ckpt_dir, 'decoder_gradient_audit.json'), 'w') as f:
++                    json.dump({'decoder_output_layer': policy.model.decoder_output_layer,
++                               'layer_gradient_norms': gradients,
++                               'all_layers_nonzero': all(g > 0 for g in gradients)}, f, indent=2)
++            # Measure gradients without clipping; fail before updating on NaN/Inf.
++            grad_norm = torch.nn.utils.clip_grad_norm_(
++                policy.parameters(), float("inf"), error_if_nonfinite=True
++            )
++            gradient_norms.append(grad_norm.item())
+             optimizer.step()
++            optimizer_steps += 1
+             optimizer.zero_grad()
+-            train_history.append(detach_dict(forward_dict))
+-        epoch_summary = compute_dict_mean(train_history[(batch_idx + 1) * epoch:(batch_idx + 1) * (epoch + 1)])
++            training_epoch_dicts.append(detach_dict(forward_dict))
++        epoch_summary = compute_dict_mean(training_epoch_dicts)
+         summary_string = ""
+         for k, v in epoch_summary.items():
+             summary_string += f"{k}: {v.item():.3f} "
++        metrics = {
++            "epoch": epoch + 1,
++            "optimizer_steps": optimizer_steps,
++            "optimizer_steps_this_run": optimizer_steps - initial_optimizer_steps,
++            "train": {k: v.item() for k, v in epoch_summary.items()},
++            "validation_before_epoch": validation_metrics,
++            "mean_gradient_norm": float(np.mean(gradient_norms)),
++            "elapsed_seconds": time.monotonic() - training_start,
++            "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(),
++            "peak_cuda_reserved_bytes": torch.cuda.max_memory_reserved(),
++        }
++        with open(metrics_path, "a") as f:
++            f.write(json.dumps(metrics) + "\n")
++        print(json.dumps(metrics), flush=True)
+ 
+         if (epoch + 1) % config['save_freq'] == 0:
+             ckpt_path = os.path.join(ckpt_dir, f"policy_epoch_{epoch + 1}_seed_{seed}.ckpt")
+@@ -211,6 +322,21 @@ def train_bc(train_dataloader, val_dataloader, config):
+     ckpt_path = os.path.join(ckpt_dir, f"policy_last.ckpt")
+     torch.save(policy.state_dict(), ckpt_path)
+ 
++    # Keep one deterministic inference result for verification in a fresh process.
++    policy.eval()
++    with torch.inference_mode():
++        images, qpos, _, _ = next(iter(val_dataloader))
++        images, qpos = images[:1], qpos[:1]
++        actions = policy(qpos.cuda(), images.cuda())
++        if not torch.isfinite(actions).all():
++            raise FloatingPointError("Non-finite checkpoint inference output")
++        np.savez_compressed(
++            os.path.join(ckpt_dir, "checkpoint_reference.npz"),
++            images=images.numpy(),
++            qpos=qpos.numpy(),
++            actions=actions.cpu().numpy(),
++        )
++
+     # best_epoch, min_val_loss, best_state_dict = best_ckpt_info
+     # ckpt_path = os.path.join(ckpt_dir, f"policy_epoch_{best_epoch}_seed_{seed}.ckpt")
+     # torch.save(best_state_dict, ckpt_path)
+@@ -238,12 +364,20 @@ if __name__ == "__main__":
+     parser.add_argument("--batch_size", action="store", type=int, help="batch_size", required=True)
+     parser.add_argument("--seed", action="store", type=int, help="seed", required=True)
+     parser.add_argument("--num_epochs", action="store", type=int, help="num_epochs", required=True)
++    parser.add_argument("--warm_start_dir", type=str,
++                        help="Completed run to initialize from; resets optimizer/RNG; num_epochs is cumulative")
+     parser.add_argument("--lr", action="store", type=float, help="lr", required=True)
+ 
+     # for ACT
+     parser.add_argument("--kl_weight", action="store", type=int, help="KL Weight", required=False)
+     parser.add_argument("--chunk_size", action="store", type=int, help="chunk_size", required=False)
+     parser.add_argument("--hidden_dim", action="store", type=int, help="hidden_dim", required=False)
++    parser.add_argument('--decoder_output_layer', type=int, default=-1,
++                        help='Use -1 for repaired final-layer training; 0 only for legacy experiments')
++    parser.add_argument('--gripper_indices', type=int, nargs='*', default=[])
++    parser.add_argument('--gripper_weight', type=float, default=1.0)
++    parser.add_argument('--critical_sampling_ratio', type=float, default=0.0)
++    parser.add_argument('--phase_samples_file', type=str)
+     parser.add_argument("--save_freq", action="store", type=int, help="save ckpt frequency", required=False, default=6000)
+     parser.add_argument(
+         "--dim_feedforward",
+diff --git a/policy/ACT/utils.py b/policy/ACT/utils.py
+index a851f32..e77b3c9 100644
+--- a/policy/ACT/utils.py
++++ b/policy/ACT/utils.py
+@@ -2,6 +2,7 @@ import numpy as np
+ import torch
+ import os
+ import h5py
++import json
+ from torch.utils.data import DataLoader
+ 
+ import IPython
+@@ -11,13 +12,19 @@ e = IPython.embed
+ 
+ class EpisodicDataset(torch.utils.data.Dataset):
+ 
+-    def __init__(self, episode_ids, dataset_dir, camera_names, norm_stats, max_action_len):
++    def __init__(self, episode_ids, dataset_dir, camera_names, norm_stats, max_action_len,
++                 critical_sampling_ratio=0.0, critical_frames=None, critical_groups=None):
+         super(EpisodicDataset).__init__()
+         self.episode_ids = episode_ids
+         self.dataset_dir = dataset_dir
+         self.camera_names = camera_names
+         self.norm_stats = norm_stats
+         self.max_action_len = max_action_len
++        if not 0 <= critical_sampling_ratio <= 1:
++            raise ValueError('critical_sampling_ratio must be in [0, 1]')
++        self.critical_sampling_ratio = critical_sampling_ratio
++        self.critical_frames = critical_frames or {}
++        self.critical_groups = critical_groups or {}
+         self.is_sim = None
+         self.__getitem__(0)  # initialize self.is_sim
+ 
+@@ -30,25 +37,33 @@ class EpisodicDataset(torch.utils.data.Dataset):
+         episode_id = self.episode_ids[index]
+         dataset_path = os.path.join(self.dataset_dir, f"episode_{episode_id}.hdf5")
+         with h5py.File(dataset_path, "r") as root:
+-            is_sim = None
++            is_sim = root.attrs.get("sim", None)
+             original_action_shape = root["/action"].shape
+             episode_len = original_action_shape[0]
+             if sample_full_episode:
+                 start_ts = 0
+             else:
+-                start_ts = np.random.choice(episode_len)
++                critical = self.critical_frames.get(int(episode_id))
++                if self.critical_sampling_ratio and np.random.random() < self.critical_sampling_ratio:
++                    groups = self.critical_groups.get(int(episode_id))
++                    if groups:
++                        critical = groups[np.random.randint(len(groups))]
++                    if critical is None or len(critical) == 0:
++                        raise ValueError(f'Missing critical frames for episode {episode_id}')
++                    start_ts = np.random.choice(critical)
++                else:
++                    start_ts = np.random.choice(episode_len)
+             # get observation at start_ts only
+             qpos = root["/observations/qpos"][start_ts]
+             image_dict = dict()
+             for cam_name in self.camera_names:
+                 image_dict[cam_name] = root[f"/observations/images/{cam_name}"][start_ts]
+-            # get all actions after and including start_ts
+-            if is_sim:
+-                action = root["/action"][start_ts:]
+-                action_len = episode_len - start_ts
+-            else:
+-                action = root["/action"][max(0, start_ts - 1):]  # hack, to make timesteps more aligned
+-                action_len = episode_len - max(0, start_ts - 1)  # hack, to make timesteps more aligned
++            # New conversions declare alignment explicitly. Preserve the legacy
++            # real-data latency adjustment only for files without this metadata.
++            action_offset = int(root.attrs.get("action_start_offset", 0 if is_sim else -1))
++            action_start = max(0, start_ts + action_offset)
++            action = root["/action"][action_start:]
++            action_len = len(action)
+ 
+         self.is_sim = is_sim
+         padded_action = np.zeros((self.max_action_len, action.shape[1]), dtype=np.float32)
+@@ -79,10 +94,12 @@ class EpisodicDataset(torch.utils.data.Dataset):
+         return image_data, qpos_data, action_data, is_pad
+ 
+ 
+-def get_norm_stats(dataset_dir, num_episodes):
++def get_norm_stats(dataset_dir, num_episodes, episode_ids=None):
+     all_qpos_data = []
+     all_action_data = []
+-    for episode_idx in range(num_episodes):
++    if episode_ids is None:
++        episode_ids = range(num_episodes)
++    for episode_idx in episode_ids:
+         dataset_path = os.path.join(dataset_dir, f"episode_{episode_idx}.hdf5")
+         with h5py.File(dataset_path, "r") as root:
+             qpos = root["/observations/qpos"][()]  # Assuming this is a numpy array
+@@ -136,19 +153,73 @@ def get_norm_stats(dataset_dir, num_episodes):
+     return stats, max_action_len
+ 
+ 
+-def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val):
++def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val, split_seed=None,
++              split_file=None, critical_sampling_ratio=0.0, phase_samples_file=None):
+     print(f"\nData from: {dataset_dir}\n")
+-    # obtain train test split
+-    train_ratio = 0.8
+-    shuffled_indices = np.random.permutation(num_episodes)
+-    train_indices = shuffled_indices[:int(train_ratio * num_episodes)]
+-    val_indices = shuffled_indices[int(train_ratio * num_episodes):]
++    if num_episodes < 2:
++        raise ValueError("At least two episodes are required for a train/validation split")
++    if split_file is not None:
++        with open(split_file) as file:
++            split = json.load(file)
++        train_ids = split.get("train_episode_ids")
++        val_ids = split.get("validation_episode_ids")
++        if not all(isinstance(ids, list) and ids and
++                   all(type(i) is int for i in ids) for ids in (train_ids, val_ids)):
++            raise ValueError("Split must contain nonempty integer train/validation episode ID lists")
++        combined = train_ids + val_ids
++        if len(combined) != num_episodes or set(combined) != set(range(num_episodes)):
++            raise ValueError("Split must cover every episode exactly once without overlap")
++        train_indices = np.asarray(train_ids, dtype=int)
++        val_indices = np.asarray(val_ids, dtype=int)
++    else:
++        train_ratio = 0.8
++        split_rng = np.random if split_seed is None else np.random.RandomState(split_seed)
++        shuffled_indices = split_rng.permutation(num_episodes)
++        train_indices = shuffled_indices[:int(train_ratio * num_episodes)]
++        val_indices = shuffled_indices[int(train_ratio * num_episodes):]
+ 
+     # obtain normalization stats for qpos and action
+-    norm_stats, max_action_len = get_norm_stats(dataset_dir, num_episodes)
+-
+-    # construct dataset and dataloader
+-    train_dataset = EpisodicDataset(train_indices, dataset_dir, camera_names, norm_stats, max_action_len)
++    norm_stats, _ = get_norm_stats(dataset_dir, num_episodes, episode_ids=train_indices)
++    # Padding must also fit validation episodes, but their values must not
++    # contribute to training normalization statistics.
++    max_action_len = 0
++    for episode_idx in range(num_episodes):
++        dataset_path = os.path.join(dataset_dir, f"episode_{episode_idx}.hdf5")
++        with h5py.File(dataset_path, "r") as root:
++            max_action_len = max(max_action_len, root["/action"].shape[0])
++
++    critical_frames = {}
++    critical_groups = {}
++    if critical_sampling_ratio:
++        if not phase_samples_file:
++            raise ValueError('Critical sampling requires phase_samples_file')
++        with open(phase_samples_file) as f:
++            phase_manifest = json.load(f)
++            phase_samples = phase_manifest['episode_frames']
++        for episode_idx in train_indices:
++            frames = phase_samples.get(str(episode_idx))
++            with h5py.File(os.path.join(dataset_dir, f'episode_{episode_idx}.hdf5')) as f:
++                length = len(f['action'])
++            if not isinstance(frames, list) or not frames or any(
++                type(t) is not int or not 0 <= t < length for t in frames
++            ):
++                raise ValueError(f'Invalid critical frames for episode {episode_idx}')
++            critical_frames[int(episode_idx)] = np.asarray(sorted(set(frames)), dtype=int)
++            groups = phase_manifest.get('episode_groups', {}).get(str(episode_idx))
++            if groups is not None:
++                if not isinstance(groups, dict) or not groups:
++                    raise ValueError(f'Invalid critical groups for episode {episode_idx}')
++                arrays = []
++                for name, group in sorted(groups.items()):
++                    if not isinstance(group, list) or not group or any(
++                        type(t) is not int or t not in frames for t in group
++                    ):
++                        raise ValueError(f'Invalid critical group {name} for episode {episode_idx}')
++                    arrays.append(np.asarray(group, dtype=int))
++                critical_groups[int(episode_idx)] = arrays
++    # Critical sampling applies only to training; validation stays independent.
++    train_dataset = EpisodicDataset(train_indices, dataset_dir, camera_names, norm_stats, max_action_len,
++                                   critical_sampling_ratio, critical_frames, critical_groups)
+     val_dataset = EpisodicDataset(val_indices, dataset_dir, camera_names, norm_stats, max_action_len)
+     train_dataloader = DataLoader(
+         train_dataset,
+diff --git a/policy/ACT/losses.py b/policy/ACT/losses.py
+new file mode 100644
+--- /dev/null
++++ b/policy/ACT/losses.py
+@@ -0,0 +1,27 @@
++"""Action losses normalized over valid targets, with optional gripper weighting."""
++import math
++import torch
++
++
++def action_losses(prediction, target, is_pad, gripper_indices=(), gripper_weight=1.0):
++    if prediction.shape != target.shape or is_pad.shape != target.shape[:2]:
++        raise ValueError('Prediction, target and padding shapes do not agree')
++    indices = list(gripper_indices)
++    dim = target.shape[-1]
++    if len(set(indices)) != len(indices) or any(i < 0 or i >= dim for i in indices):
++        raise ValueError('Invalid gripper action indices')
++    if not math.isfinite(gripper_weight) or gripper_weight <= 0:
++        raise ValueError('gripper_weight must be finite and positive')
++    valid = (~is_pad).unsqueeze(-1)
++    count = valid.sum().clamp_min(1)
++    error = (prediction - target).abs() * valid
++    weights = prediction.new_ones(dim)
++    weights[indices] = gripper_weight
++    result = {'l1': error.sum() / (count * dim),
++              'weighted_l1': (error * weights).sum() / (count * weights.sum())}
++    if indices:
++        result['gripper_l1'] = error[..., indices].sum() / (count * len(indices))
++        arms = [i for i in range(dim) if i not in indices]
++        if arms:
++            result['arm_l1'] = error[..., arms].sum() / (count * len(arms))
++    return result
+diff --git a/policy/ACT/tests/test_data_loading.py b/policy/ACT/tests/test_data_loading.py
+new file mode 100644
+--- /dev/null
++++ b/policy/ACT/tests/test_data_loading.py
+@@ -0,0 +1,225 @@
++"""CPU-only regression checks for ACT action alignment and dataset splitting.
++
++Run from the RoboTwin workspace with:
++    python -m unittest discover -s XPolicyLab/policy/ACT/tests -v
++"""
++
++import importlib.util
++import json
++from pathlib import Path
++import tempfile
++import unittest
++from unittest import mock
++
++import h5py
++import numpy as np
++
++
++# Load the dataloader alone; importing the adapter package can import model code.
++_SPEC = importlib.util.spec_from_file_location(
++    "act_data_loading_under_test", Path(__file__).resolve().parents[1] / "utils.py"
++)
++act_utils = importlib.util.module_from_spec(_SPEC)
++_SPEC.loader.exec_module(act_utils)
++
++
++class DataLoadingTests(unittest.TestCase):
++    CAMERA_NAMES = ["cam_head"]
++
++    def setUp(self):
++        temporary_dir = tempfile.TemporaryDirectory()
++        self.addCleanup(temporary_dir.cleanup)
++        self.dataset_dir = temporary_dir.name
++        random_state = np.random.get_state()
++        self.addCleanup(np.random.set_state, random_state)
++
++    def write_episode(self, episode_id, length=6, base=0, attrs=None):
++        time = np.arange(length, dtype=np.float32)[:, None]
++        qpos = np.concatenate([time + base, time * 2 + base + 10], axis=1)
++        action = qpos + np.array([0.5, 1.5], dtype=np.float32)
++        images = np.broadcast_to(
++            np.arange(length, dtype=np.uint8)[:, None, None, None],
++            (length, 2, 3, 3),
++        ).copy()
++        path = Path(self.dataset_dir) / f"episode_{episode_id}.hdf5"
++        with h5py.File(path, "w") as output:
++            output.create_dataset("action", data=action)
++            output.create_dataset("observations/qpos", data=qpos)
++            output.create_dataset("observations/images/cam_head", data=images)
++            for key, value in (attrs or {}).items():
++                output.attrs[key] = value
++        return qpos, action
++
++    @staticmethod
++    def identity_stats():
++        return {
++            "qpos_mean": np.zeros(2, dtype=np.float32),
++            "qpos_std": np.ones(2, dtype=np.float32),
++            "action_mean": np.zeros(2, dtype=np.float32),
++            "action_std": np.ones(2, dtype=np.float32),
++        }
++
++    def sample_episode(self, timestep):
++        with mock.patch.object(act_utils.np.random, "choice", return_value=timestep):
++            dataset = act_utils.EpisodicDataset(
++                [0], self.dataset_dir, self.CAMERA_NAMES, self.identity_stats(), 6
++            )
++            return dataset[0]
++
++    def assert_sample_alignment(self, attrs, timestep, action_start):
++        qpos, action = self.write_episode(0, attrs=attrs)
++        image, observed_qpos, observed_action, is_pad = self.sample_episode(timestep)
++        valid_length = len(action) - action_start
++        np.testing.assert_allclose(observed_qpos.numpy(), qpos[timestep])
++        np.testing.assert_allclose(image.numpy(), timestep / 255.0)
++        np.testing.assert_allclose(
++            observed_action.numpy()[:valid_length], action[action_start:]
++        )
++        np.testing.assert_array_equal(
++            is_pad.numpy(), np.arange(len(action)) >= valid_length
++        )
++
++    def test_paired_metadata_keeps_action_at_observation_index(self):
++        for sim in (None, False, True):
++            attrs = {"action_start_offset": 0}
++            if sim is not None:
++                attrs["sim"] = sim
++            for timestep in (0, 2):
++                with self.subTest(sim=sim, timestep=timestep):
++                    self.assert_sample_alignment(attrs, timestep, timestep)
++
++    def test_legacy_sim_and_real_alignment_remain_available(self):
++        for attrs, offset in (({"sim": True}, 0), ({"sim": False}, -1), ({}, -1)):
++            for timestep in (0, 2):
++                with self.subTest(attrs=attrs, timestep=timestep):
++                    self.assert_sample_alignment(
++                        attrs, timestep, max(0, timestep + offset)
++                    )
++
++    def test_explicit_offset_takes_precedence_over_sim(self):
++        for timestep in (0, 2):
++            with self.subTest(timestep=timestep):
++                self.assert_sample_alignment(
++                    {"sim": True, "action_start_offset": -1},
++                    timestep,
++                    max(0, timestep - 1),
++                    )
++
++    def test_critical_sampling_preserves_observation_action_alignment(self):
++        qpos, actions = self.write_episode(0, attrs={'action_start_offset': 0, 'sim': True})
++        dataset = act_utils.EpisodicDataset([0], self.dataset_dir, self.CAMERA_NAMES,
++                                           self.identity_stats(), 6, 1.0, {0: np.array([2])})
++        for _ in range(3):
++            image, qpos_data, action, pad = dataset[0]
++            np.testing.assert_array_equal(qpos_data.numpy(), qpos[2])
++            np.testing.assert_array_equal(action.numpy()[:4], actions[2:])
++            self.assertAlmostEqual(image.mean().item(), 2 / 255)
++            self.assertEqual(pad.sum().item(), 2)
++
++    def write_split_episodes(self):
++        # RandomState(1) splits these into train [0, 2], validation [1].
++        self.write_episode(0, length=3, base=0, attrs={"action_start_offset": 0})
++        self.write_episode(1, length=8, base=1000, attrs={"action_start_offset": 0})
++        self.write_episode(2, length=4, base=20, attrs={"action_start_offset": 0})
++
++    def load_split(self, seed=1):
++        # DataLoader workers only start on iteration; these tests read .dataset.
++        with mock.patch.object(act_utils.np.random, "choice", return_value=0):
++            return act_utils.load_data(
++                self.dataset_dir, 3, self.CAMERA_NAMES, 1, 1, split_seed=seed
++            )
++
++    def test_selected_statistics_preserve_padding_formula_and_default_api(self):
++        self.write_split_episodes()
++        stats, max_length = act_utils.get_norm_stats(
++            self.dataset_dir, 3, episode_ids=[0, 2]
++        )
++        self.assertEqual(max_length, 4)
++        for source_key, prefix in (("observations/qpos", "qpos"), ("action", "action")):
++            values = []
++            for episode_id in (0, 2):
++                with h5py.File(Path(self.dataset_dir) / f"episode_{episode_id}.hdf5", "r") as source:
++                    array = source[source_key][()]
++                values.append(
++                    np.concatenate([array, np.repeat(array[-1:], 4 - len(array), axis=0)])
++                )
++            padded = np.stack(values)
++            np.testing.assert_allclose(stats[f"{prefix}_mean"], padded.mean(axis=(0, 1)))
++            np.testing.assert_allclose(
++                stats[f"{prefix}_std"],
++                np.clip(padded.std(axis=(0, 1), ddof=1), 1e-2, np.inf),
++                rtol=1e-6,
++            )
++        all_stats, all_max_length = act_utils.get_norm_stats(self.dataset_dir, 3)
++        self.assertEqual(all_max_length, 8)
++        self.assertFalse(np.allclose(all_stats["action_mean"], stats["action_mean"]))
++
++    def test_validation_values_do_not_affect_training_statistics(self):
++        self.write_split_episodes()
++        train, validation, before, _ = self.load_split()
++        np.testing.assert_array_equal(train.dataset.episode_ids, [0, 2])
++        np.testing.assert_array_equal(validation.dataset.episode_ids, [1])
++        self.write_episode(1, length=8, base=-100000, attrs={"action_start_offset": 0})
++        _, _, after, _ = self.load_split()
++        expected, _ = act_utils.get_norm_stats(self.dataset_dir, 3, episode_ids=[0, 2])
++        for key in ("qpos_mean", "qpos_std", "action_mean", "action_std"):
++            with self.subTest(key=key):
++                np.testing.assert_array_equal(before[key], after[key])
++                np.testing.assert_array_equal(after[key], expected[key])
++
++    def test_validation_longer_than_training_fits_shared_padding(self):
++        self.write_split_episodes()
++        train, validation, stats, _ = self.load_split()
++        self.assertEqual(train.dataset.max_action_len, 8)
++        self.assertEqual(validation.dataset.max_action_len, 8)
++        with mock.patch.object(act_utils.np.random, "choice", return_value=0):
++            _, _, action, is_pad = validation.dataset[0]
++            _, _, train_action, train_pad = train.dataset[0]
++        self.assertEqual(tuple(action.shape), (8, 2))
++        self.assertEqual(tuple(train_action.shape), (8, 2))
++        np.testing.assert_array_equal(is_pad.numpy(), np.zeros(8, dtype=bool))
++        np.testing.assert_array_equal(train_pad.numpy(), np.arange(8) >= 3)
++        with h5py.File(Path(self.dataset_dir) / "episode_1.hdf5", "r") as source:
++            expected_action = source["action"][()]
++        restored_action = action.numpy() * stats["action_std"] + stats["action_mean"]
++        np.testing.assert_allclose(restored_action, expected_action, rtol=1e-6)
++
++    def test_explicit_split_seed_ignores_global_numpy_random_state(self):
++        self.write_split_episodes()
++        splits = []
++        for global_seed in (42, 9876):
++            np.random.seed(global_seed)
++            np.random.random(17)
++            train, validation, _, _ = self.load_split(seed=1)
++            splits.append((list(train.dataset.episode_ids), list(validation.dataset.episode_ids)))
++        self.assertEqual(splits[0], ([0, 2], [1]))
++        self.assertEqual(splits[0], splits[1])
++        train, validation, _, _ = self.load_split(seed=0)
++        self.assertEqual(list(train.dataset.episode_ids), [2, 1])
++        self.assertEqual(list(validation.dataset.episode_ids), [0])
++
++    def test_manifest_controls_membership_and_training_statistics(self):
++        self.write_split_episodes()
++        manifest = Path(self.dataset_dir) / "split.json"
++        manifest.write_text(json.dumps({"train_episode_ids": [0, 2], "validation_episode_ids": [1]}))
++        expected, _ = act_utils.get_norm_stats(self.dataset_dir, 3, episode_ids=[0, 2])
++        for seed in (0, 99):
++            train, val, stats, _ = act_utils.load_data(
++                self.dataset_dir, 3, self.CAMERA_NAMES, 1, 1, split_seed=seed, split_file=manifest
++            )
++            self.assertEqual(train.dataset.episode_ids.tolist(), [0, 2])
++            self.assertEqual(val.dataset.episode_ids.tolist(), [1])
++            np.testing.assert_array_equal(stats['action_mean'], expected['action_mean'])
++
++    def test_invalid_manifest_rejected_before_reading_episodes(self):
++        manifest = Path(self.dataset_dir) / "split.json"
++        for train, val in [([0, 1], [1]), ([0], [1]), ([0, 3], [1]),
++                           ([], [0, 1, 2]), ([False, 2], [1]), ([0, 0], [1, 2])]:
++            with self.subTest(train=train, val=val):
++                manifest.write_text(json.dumps({"train_episode_ids": train, "validation_episode_ids": val}))
++                with self.assertRaises(ValueError):
++                    act_utils.load_data(self.dataset_dir, 3, self.CAMERA_NAMES, 1, 1, split_file=manifest)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/policy/ACT/tests/test_repaired_training.py b/policy/ACT/tests/test_repaired_training.py
+new file mode 100644
+--- /dev/null
++++ b/policy/ACT/tests/test_repaired_training.py
+@@ -0,0 +1,75 @@
++import sys
++from pathlib import Path
++import unittest
++import tempfile
++import json
++from argparse import Namespace
++import torch
++from torch import nn
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
++from XPolicyLab.policy.ACT.losses import action_losses
++from XPolicyLab.policy.ACT.detr.models.detr_vae import DETRVAE
++from XPolicyLab.policy.ACT.detr.models.transformer import Transformer
++from XPolicyLab.policy.ACT.detr.act_policy import ACT
++
++
++class TinyBackbone(nn.Module):
++    num_channels = 32
++    def __init__(self):
++        super().__init__()
++        self.conv = nn.Conv2d(3, 32, 1)
++    def forward(self, image):
++        features = self.conv(image[:, :, :2, :2])
++        return [features], [torch.zeros_like(features[:1])]
++
++
++class RepairedTrainingTests(unittest.TestCase):
++    def test_conflicting_checkpoint_decoder_setting_fails_before_model_load(self):
++        with tempfile.TemporaryDirectory() as directory:
++            Path(directory, 'training_config.json').write_text(json.dumps(
++                {'policy_config': {'decoder_output_layer': -1}}))
++            with self.assertRaisesRegex(ValueError, 'conflicts with checkpoint'):
++                ACT({'ckpt_dir': directory, 'decoder_output_layer': 0}, Namespace())
++
++    def test_padding_does_not_dilute_valid_loss_or_add_gradients(self):
++        prediction = torch.ones(1, 4, 3, requires_grad=True)
++        target = torch.zeros_like(prediction)
++        pad = torch.tensor([[False, False, True, True]])
++        result = action_losses(prediction, target, pad)
++        self.assertEqual(result['l1'].item(), 1)
++        self.assertEqual(result['weighted_l1'].item(), 1)
++        result['weighted_l1'].backward()
++        self.assertEqual(prediction.grad[:, 2:].abs().sum().item(), 0)
++        self.assertEqual(action_losses(prediction[:, :2], target[:, :2], pad[:, :2])['l1'].item(), 1)
++
++    def test_gripper_has_four_times_per_dimension_gradient(self):
++        prediction = torch.ones(1, 1, 3, requires_grad=True)
++        result = action_losses(prediction, torch.zeros_like(prediction),
++                               torch.tensor([[False]]), [2], 4)
++        result['weighted_l1'].backward()
++        self.assertAlmostEqual((prediction.grad[0, 0, 2] / prediction.grad[0, 0, 0]).item(), 4)
++
++    def test_all_padding_produces_finite_zero_loss(self):
++        result = action_losses(torch.ones(1, 2, 3), torch.zeros(1, 2, 3),
++                               torch.ones(1, 2, dtype=torch.bool), [2], 4)
++        self.assertTrue(all(torch.isfinite(v) and v == 0 for v in result.values()))
++
++    def test_actual_forward_trains_all_decoder_layers_in_repaired_mode(self):
++        for selected, expected_nonzero in [(0, 1), (-1, 7)]:
++            with self.subTest(selected=selected):
++                torch.manual_seed(1)
++                transformer = Transformer(d_model=32, nhead=4, num_encoder_layers=1,
++                                          num_decoder_layers=7, dim_feedforward=64,
++                                          dropout=0, return_intermediate_dec=True)
++                model = DETRVAE([TinyBackbone()], transformer, None, 3, 5, ['head'], selected)
++                prediction = model(torch.randn(1, 3), torch.randn(1, 1, 3, 8, 8), None)[0]
++                self.assertEqual(tuple(prediction.shape), (1, 5, 3))
++                (prediction - torch.randn_like(prediction)).square().mean().backward()
++                nonzero = [sum(float(p.grad.abs().sum()) for p in layer.parameters()
++                               if p.grad is not None) > 0 for layer in transformer.decoder.layers]
++                self.assertEqual(sum(nonzero), expected_nonzero)
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/policy/ACT/tests/test_training_artifacts.py b/policy/ACT/tests/test_training_artifacts.py
+new file mode 100644
+--- /dev/null
++++ b/policy/ACT/tests/test_training_artifacts.py
+@@ -0,0 +1,227 @@
++"""Exercise the real ACT training loop on CPU using a tiny trainable policy."""
++
++from contextlib import contextmanager, redirect_stdout
++import importlib.util
++import io
++import json
++import pickle
++from pathlib import Path
++import sys
++import tempfile
++import unittest
++from unittest import mock
++
++import numpy as np
++import torch
++from torch import nn
++from torch.utils.data import DataLoader, TensorDataset
++
++
++ACT_DIR = Path(__file__).resolve().parents[1]
++_SPEC = importlib.util.spec_from_file_location(
++    "act_training_under_test", ACT_DIR / "imitate_episodes.py"
++)
++training = importlib.util.module_from_spec(_SPEC)
++sys.path.insert(0, str(ACT_DIR))
++try:
++    _SPEC.loader.exec_module(training)
++finally:
++    sys.path.remove(str(ACT_DIR))
++
++
++class TinyPolicy(nn.Module):
++    def __init__(self, nonfinite_training=False):
++        super().__init__()
++        self.head = nn.Linear(2, 2)
++        with torch.no_grad():
++            self.head.weight.fill_(0.1)
++            self.head.bias.zero_()
++        self.nonfinite_training = nonfinite_training
++        self.optimizer = torch.optim.SGD(self.parameters(), lr=0.05)
++
++    def configure_optimizers(self):
++        return self.optimizer
++
++    def forward(self, qpos, images, actions=None, is_pad=None):
++        prediction = self.head(qpos).unsqueeze(1).expand(-1, 3, -1)
++        if actions is None:
++            return prediction
++        loss = (prediction - actions).square().mean()
++        if self.training and self.nonfinite_training:
++            loss = loss * float("nan")
++        return {
++            "loss": loss,
++            "l1": (prediction - actions).abs().mean(),
++            "kl": torch.zeros((), dtype=prediction.dtype),
++        }
++
++
++class TrainingArtifactTests(unittest.TestCase):
++    def setUp(self):
++        temporary_dir = tempfile.TemporaryDirectory()
++        self.addCleanup(temporary_dir.cleanup)
++        self.ckpt_dir = Path(temporary_dir.name)
++        random_state = np.random.get_state()
++        torch_state = torch.random.get_rng_state()
++        self.addCleanup(np.random.set_state, random_state)
++        self.addCleanup(torch.random.set_rng_state, torch_state)
++        qpos = torch.tensor([[0.2, 0.4], [0.6, 0.8], [1.0, 1.2], [1.4, 1.6]])
++        images = torch.linspace(0, 1, 4 * 3 * 2 * 2).reshape(4, 1, 3, 2, 2)
++        actions = (qpos + 0.5).unsqueeze(1).expand(-1, 3, -1).clone()
++        padding = torch.zeros(4, 3, dtype=torch.bool)
++        dataset = TensorDataset(images, qpos, actions, padding)
++        self.train_loader = DataLoader(dataset, batch_size=2, shuffle=False, num_workers=0)
++        self.val_loader = DataLoader(dataset, batch_size=2, shuffle=False, num_workers=0)
++        self.config = {
++            "num_epochs": 2,
++            "ckpt_dir": str(self.ckpt_dir),
++            "seed": 0,
++            "policy_class": "ACT",
++            "policy_config": {},
++            "save_freq": 1,
++        }
++
++    @contextmanager
++    def cpu_training(self, policy):
++        # Keep forward/backward/SGD and artifact writing real; replace only model
++        # creation, device transfers, and CUDA accounting for this CPU fixture.
++        with (
++            mock.patch.object(training, "make_policy", return_value=policy),
++            mock.patch.object(nn.Module, "cuda", lambda module, *args, **kwargs: module),
++            mock.patch.object(torch.Tensor, "cuda", lambda tensor, *args, **kwargs: tensor),
++            mock.patch.object(torch.cuda, "is_available", return_value=False),
++            mock.patch.object(torch.cuda, "reset_peak_memory_stats"),
++            mock.patch.object(torch.cuda, "max_memory_allocated", return_value=0),
++            mock.patch.object(torch.cuda, "max_memory_reserved", return_value=0),
++            mock.patch.object(training, "tqdm", side_effect=lambda iterable: iterable),
++            mock.patch.object(policy.optimizer, "step", wraps=policy.optimizer.step) as step,
++            redirect_stdout(io.StringIO()),
++        ):
++            yield step
++
++    def test_updates_metrics_checkpoint_and_reference_roundtrip(self):
++        policy = TinyPolicy()
++        before = {name: value.detach().clone() for name, value in policy.state_dict().items()}
++        with self.cpu_training(policy) as step:
++            training.train_bc(self.train_loader, self.val_loader, self.config)
++            self.assertEqual(step.call_count, 4)
++        self.assertTrue(
++            any(not torch.equal(before[name], value) for name, value in policy.state_dict().items())
++        )
++
++        metrics = [
++            json.loads(line)
++            for line in (self.ckpt_dir / "training_metrics.jsonl").read_text().splitlines()
++        ]
++        self.assertEqual([entry["epoch"] for entry in metrics], [1, 2])
++        self.assertEqual([entry["optimizer_steps"] for entry in metrics], [2, 4])
++        for entry in metrics:
++            for split in ("train", "validation_before_epoch"):
++                self.assertEqual(set(entry[split]), {"loss", "l1", "kl"})
++                self.assertTrue(all(np.isfinite(value) for value in entry[split].values()))
++            self.assertTrue(np.isfinite(entry["mean_gradient_norm"]))
++            self.assertGreater(entry["mean_gradient_norm"], 0)
++            self.assertGreaterEqual(entry["elapsed_seconds"], 0)
++            self.assertEqual(entry["peak_cuda_allocated_bytes"], 0)
++            self.assertEqual(entry["peak_cuda_reserved_bytes"], 0)
++
++        for name in ("policy_epoch_1_seed_0.ckpt", "policy_epoch_2_seed_0.ckpt", "policy_last.ckpt"):
++            self.assertTrue((self.ckpt_dir / name).is_file())
++        state_dict = torch.load(self.ckpt_dir / "policy_last.ckpt", map_location="cpu", weights_only=True)
++        restored = TinyPolicy()
++        restored.load_state_dict(state_dict, strict=True)
++        restored.eval()
++        for name, value in policy.state_dict().items():
++            torch.testing.assert_close(restored.state_dict()[name], value, rtol=0, atol=0)
++
++        with np.load(self.ckpt_dir / "checkpoint_reference.npz", allow_pickle=False) as reference:
++            self.assertEqual(reference["images"].shape, (1, 1, 3, 2, 2))
++            self.assertEqual(reference["qpos"].shape, (1, 2))
++            self.assertEqual(reference["actions"].shape, (1, 3, 2))
++            for name in ("images", "qpos", "actions"):
++                self.assertEqual(reference[name].dtype, np.float32)
++                self.assertTrue(np.isfinite(reference[name]).all())
++            with torch.inference_mode():
++                prediction = restored(
++                    torch.from_numpy(reference["qpos"]), torch.from_numpy(reference["images"])
++                ).numpy()
++            np.testing.assert_allclose(prediction, reference["actions"], rtol=1e-6, atol=1e-7)
++
++    def test_nonfinite_training_loss_stops_before_optimizer_update(self):
++        policy = TinyPolicy(nonfinite_training=True)
++        before = {name: value.detach().clone() for name, value in policy.state_dict().items()}
++        with self.cpu_training(policy) as step:
++            with self.assertRaisesRegex(FloatingPointError, "Non-finite training loss"):
++                training.train_bc(self.train_loader, self.val_loader, self.config)
++            step.assert_not_called()
++        for name, value in policy.state_dict().items():
++            torch.testing.assert_close(value, before[name], rtol=0, atol=0)
++        self.assertFalse((self.ckpt_dir / "policy_last.ckpt").exists())
++        self.assertFalse((self.ckpt_dir / "checkpoint_reference.npz").exists())
++
++    def test_warm_start_loads_weights_and_counts_only_remaining_epochs(self):
++        source = TinyPolicy()
++        with torch.no_grad():
++            source.head.weight.fill_(0.25)
++            source.head.bias.fill_(0.3)
++        source_path = self.ckpt_dir / "source.ckpt"
++        torch.save(source.state_dict(), source_path)
++        source_bytes = source_path.read_bytes()
++        self.config.update(num_epochs=4, start_epoch=2, initial_optimizer_steps=4,
++                           warm_start={"checkpoint": str(source_path)})
++        policy = TinyPolicy()
++        first_forward_weights = []
++        handle = policy.register_forward_pre_hook(
++            lambda module, inputs: first_forward_weights.append(module.head.weight.detach().clone())
++        )
++        self.addCleanup(handle.remove)
++        with self.cpu_training(policy) as step:
++            training.train_bc(self.train_loader, self.val_loader, self.config)
++            self.assertEqual(step.call_count, 4)
++        torch.testing.assert_close(first_forward_weights[0], source.head.weight, rtol=0, atol=0)
++        self.assertEqual(source_path.read_bytes(), source_bytes)
++        metrics = [json.loads(line) for line in
++                   (self.ckpt_dir / "training_metrics.jsonl").read_text().splitlines()]
++        self.assertEqual([entry["epoch"] for entry in metrics], [3, 4])
++        self.assertEqual([entry["optimizer_steps"] for entry in metrics], [6, 8])
++        self.assertEqual([entry["optimizer_steps_this_run"] for entry in metrics], [2, 4])
++        self.assertTrue(all(np.isfinite(entry["train"]["loss"]) for entry in metrics))
++        self.assertFalse((self.ckpt_dir / "policy_epoch_1_seed_0.ckpt").exists())
++        self.assertTrue((self.ckpt_dir / "policy_epoch_4_seed_0.ckpt").exists())
++
++    def test_warm_start_rejects_changed_split_and_normalization(self):
++        source_dir = self.ckpt_dir / "source"
++        source_dir.mkdir()
++        source_config = dict(self.config, state_dim=2, camera_names=["head"], lr=0.05,
++                             batch_size=2, dataset_dir="dataset", train_episode_ids=[0, 1],
++                             validation_episode_ids=[2], temporal_agg=False, episode_len=3)
++        (source_dir / "training_config.json").write_text(json.dumps(source_config))
++        (source_dir / "training_metrics.jsonl").write_text(json.dumps({"epoch": 2, "optimizer_steps": 4}) + "\n")
++        torch.save(TinyPolicy().state_dict(), source_dir / "policy_last.ckpt")
++        stats = {key: np.ones(2) for key in ("action_mean", "action_std", "qpos_mean", "qpos_std")}
++        with (source_dir / "dataset_stats.pkl").open("wb") as f:
++            pickle.dump(stats, f)
++        target = dict(source_config, num_epochs=4)
++        training.prepare_warm_start(target, stats, source_dir)
++        self.assertEqual(target["start_epoch"], 2)
++        self.assertEqual(target["initial_optimizer_steps"], 4)
++        self.assertTrue(target["warm_start"]["optimizer_reset"])
++        with self.assertRaisesRegex(ValueError, "train_episode_ids"):
++            training.prepare_warm_start(dict(target, train_episode_ids=[1, 2]), stats, source_dir)
++        with self.assertRaisesRegex(ValueError, "action_std"):
++            training.prepare_warm_start(target, dict(stats, action_std=np.zeros(2)), source_dir)
++        with self.assertRaisesRegex(ValueError, "separate output"):
++            training.prepare_warm_start(dict(target, ckpt_dir=str(source_dir)), stats, source_dir)
++
++    def test_nested_model_parser_accepts_warm_start_option(self):
++        from detr.main import get_args_parser
++        args = get_args_parser().parse_args([
++            "--ckpt_dir", "out", "--policy_class", "ACT", "--bench_name", "bench",
++            "--task_name", "task", "--seed", "0", "--num_epochs", "4",
++            "--warm_start_dir", "source",
++        ])
++        self.assertEqual(args.warm_start_dir, "source")
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,0 +1,44 @@
+{
+  "upstream": {
+    "RoboTwin": "30954692d06ba7e89f7a6b76064f4062c488fa81",
+    "XPolicyLab": "a9ccf8dbc34ad047534a14b7ee0503bddf0e54b5"
+  },
+  "publication_path_replacement": {
+    "workspace": "${ROBOTWIN_ROOT}",
+    "user_home": "${USER_HOME}"
+  },
+  "files": {
+    "README.md": {
+      "bytes": 5653,
+      "sha256": "d9cf6712efe47d2fb511dae669169afe07c1c4ad92da36cf2fd0fd2211fed36e"
+    },
+    "demo_train50_wrist_v2.yml": {
+      "bytes": 916,
+      "sha256": "40ca6f64271d9784212c760147a04ba25467683cb18c9acbdf4e457b80fd757c"
+    },
+    "evidence.json": {
+      "bytes": 593833,
+      "sha256": "c53956cdd549b760b00a730e09eaef5d7278b3ac77a4d5483a3edef0e1ae3045"
+    },
+    "frozen-test20-report.md": {
+      "bytes": 1997,
+      "sha256": "a8b59868fbd18aec576937e496b6311c9bd576e8cd1bb2b0574bcb06ddc70f1f"
+    },
+    "robotwin-workspace.patch": {
+      "bytes": 18746,
+      "sha256": "62b420ecb0d0eddf2426e24feb0914128bcb6f2a3563355a57f6cc85976eeac5"
+    },
+    "test20-results.csv": {
+      "bytes": 838,
+      "sha256": "17a3f4f4e4e15768fc3a394bd6cb49ecf280a7c894a1c6aa94ba4674e34010cc"
+    },
+    "training-and-controller.patch": {
+      "bytes": 288538,
+      "sha256": "ecbe78e100c0ea3db18f16d0655fec282cad06f59168a5fca8f09bf7fce1f547"
+    },
+    "xpolicylab-act-repaired.patch": {
+      "bytes": 65134,
+      "sha256": "869b6aa18fb4a00a144802980a8966a69ae848ab336c4b9faa8106a0bfdcc45a"
+    }
+  }
+}
