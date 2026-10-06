@@ -1,0 +1,409 @@
+diff --git a/env_cfg/task_config/demo_clean.yml b/env_cfg/task_config/demo_clean.yml
+index 52e6213..025d2b0 100644
+--- a/env_cfg/task_config/demo_clean.yml
++++ b/env_cfg/task_config/demo_clean.yml
+@@ -33,6 +33,6 @@ data_type:
+ pcd_down_sample_num: 1024
+ pcd_crop: true
+ save_path: ./data
+-clear_cache_freq: 5
++clear_cache_freq: 1
+ collect_data: true
+ eval_video_log: true
+diff --git a/envs/_base_task.py b/envs/_base_task.py
+index 301da9f..29c4a4c 100644
+--- a/envs/_base_task.py
++++ b/envs/_base_task.py
+@@ -214,7 +214,9 @@ class Base_Task(gym.Env):
+         sapien.render.set_camera_shader_dir("rt")
+         sapien.render.set_ray_tracing_samples_per_pixel(32)
+         sapien.render.set_ray_tracing_path_depth(8)
+-        sapien.render.set_ray_tracing_denoiser("oidn")
++        sapien.render.set_ray_tracing_denoiser(
++            os.environ.get("ROBOTWIN_RAY_TRACING_DENOISER", "oidn")
++        )
+ 
+         # declare sapien scene
+         scene_config = sapien.SceneConfig()
+diff --git a/scripts/test_render.py b/scripts/test_render.py
+index 3897dc0..a2184cd 100644
+--- a/scripts/test_render.py
++++ b/scripts/test_render.py
+@@ -48,7 +48,9 @@ class Sapien_TEST(gym.Env):
+         sapien.render.set_camera_shader_dir("rt")
+         sapien.render.set_ray_tracing_samples_per_pixel(32)
+         sapien.render.set_ray_tracing_path_depth(8)
+-        sapien.render.set_ray_tracing_denoiser("oidn")
++        sapien.render.set_ray_tracing_denoiser(
++            os.environ.get("ROBOTWIN_RAY_TRACING_DENOISER", "oidn")
++        )
+ 
+         # declare sapien scene
+         scene_config = sapien.SceneConfig()
+diff --git a/scripts/validate_act_checkpoint.py b/scripts/validate_act_checkpoint.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/validate_act_checkpoint.py
+@@ -0,0 +1,234 @@
++#!/usr/bin/env python3
++"""Reload an ACT checkpoint in a fresh process and verify recorded inference.
++
++Example (with the training environment and TORCH_HOME cache already selected):
++    python scripts/validate_act_checkpoint.py \
++        --ckpt-dir /absolute/path/to/checkpoint_directory \
++        --env-cfg-type aloha_agilex --action-type joint
++
++This uses the real ACT adapter on CUDA, without starting a simulator or training.
++"""
++
++import argparse
++import hashlib
++import json
++import os
++from pathlib import Path
++import sys
++from datetime import datetime, timezone
++
++
++WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
++RTOL = 1e-5
++ATOL = 1e-6
++
++
++def sha256_file(path):
++    digest = hashlib.sha256()
++    with path.open("rb") as stream:
++        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def validate(args, report):
++    # Import only after argument parsing, so --help requires no model dependencies.
++    sys.path.insert(0, str(WORKSPACE_ROOT))
++    import numpy as np
++    import torch
++    import yaml
++
++    from XPolicyLab.utils.process_data import (
++        get_action_dim,
++        get_robot_action_dim_info,
++        pack_robot_state,
++        unpack_robot_state,
++    )
++
++    ckpt_dir = args.ckpt_dir
++    checkpoint_path = ckpt_dir / "policy_last.ckpt"
++    stats_path = ckpt_dir / "dataset_stats.pkl"
++    training_config_path = ckpt_dir / "training_config.json"
++    reference_path = ckpt_dir / "checkpoint_reference.npz"
++    for path in (checkpoint_path, stats_path, training_config_path, reference_path):
++        if not path.is_file():
++            raise FileNotFoundError(f"Required checkpoint artifact is missing: {path}")
++
++    report["checkpoint_sha256"] = sha256_file(checkpoint_path)
++    report["dataset_stats_sha256"] = sha256_file(stats_path)
++    report["reference_sha256"] = sha256_file(reference_path)
++    with training_config_path.open(encoding="utf-8") as stream:
++        training_config = json.load(stream)
++    defaults_path = WORKSPACE_ROOT / "XPolicyLab/policy/ACT/deploy.yml"
++    with defaults_path.open(encoding="utf-8") as stream:
++        model_config = yaml.safe_load(stream)
++    if not isinstance(model_config, dict):
++        raise ValueError(f"Expected a mapping in {defaults_path}")
++
++    policy_config = training_config["policy_config"]
++    model_config.update(policy_config)
++    for key in ("policy_class", "num_epochs", "lr", "seed", "ckpt_setting", "bench_name", "task_name"):
++        if key in training_config:
++            model_config[key] = training_config[key]
++    camera_names = list(policy_config["camera_names"])
++    if not camera_names or len(set(camera_names)) != len(camera_names):
++        raise ValueError("Training camera_names must be nonempty and unique")
++    if "camera_names" in training_config and list(training_config["camera_names"]) != camera_names:
++        raise ValueError("Training configuration contains conflicting camera orders")
++    chunk_size = int(policy_config["num_queries"])
++    action_dim = int(get_action_dim(args.env_cfg_type))
++    robot_info = get_robot_action_dim_info(args.env_cfg_type)
++    if int(training_config.get("state_dim", action_dim)) != action_dim:
++        raise ValueError("Checkpoint state dimension does not match the requested robot")
++    if model_config["policy_class"] != "ACT":
++        raise ValueError("This validator expects an ACT checkpoint")
++
++    os.environ["ACT_ACTION_DIM"] = str(action_dim)
++    model_config.update(
++        chunk_size=chunk_size,
++        camera_names=camera_names,
++        temporal_agg=False,
++        device="cuda:0",
++        ckpt_dir=str(ckpt_dir),
++        env_cfg_type=args.env_cfg_type,
++        action_type=args.action_type,
++        action_dim=action_dim,
++    )
++    seed = int(model_config["seed"])
++    report.update(
++        seed=seed,
++        camera_names=camera_names,
++        action_dim=action_dim,
++        chunk_size=chunk_size,
++        device=model_config["device"],
++        temporal_agg=False,
++        torch_home=os.environ.get("TORCH_HOME"),
++        model_parameters={
++            key: model_config[key]
++            for key in ("hidden_dim", "dim_feedforward", "enc_layers", "dec_layers", "nheads", "backbone")
++        },
++        tolerances={"rtol": RTOL, "atol": ATOL},
++    )
++
++    with np.load(reference_path, allow_pickle=False) as reference:
++        images = np.array(reference["images"], copy=True)
++        qpos = np.array(reference["qpos"], copy=True)
++        expected_actions = np.array(reference["actions"], copy=True)
++    expected_shapes = {
++        "images": (1, len(camera_names), 3, 480, 640),
++        "qpos": (1, action_dim),
++        "actions": (1, chunk_size, action_dim),
++    }
++    for name, array in (("images", images), ("qpos", qpos), ("actions", expected_actions)):
++        if array.shape != expected_shapes[name]:
++            raise ValueError(f"Reference {name} shape {array.shape} != {expected_shapes[name]}")
++        if array.dtype != np.float32 or not np.isfinite(array).all():
++            raise ValueError(f"Reference {name} must contain finite float32 values")
++    if images.min() < 0 or images.max() > 1:
++        raise ValueError("Reference images must be in [0, 1]")
++    report["reference_shapes"] = {name: list(shape) for name, shape in expected_shapes.items()}
++
++    np.random.seed(seed)
++    torch.manual_seed(seed)
++    if not torch.cuda.is_available():
++        raise RuntimeError("The current ACT model constructor requires CUDA")
++    from XPolicyLab.policy.ACT.model import Model
++
++    # The adapter's ACT constructor calls load_state_dict with its default
++    # strict=True; returning successfully verifies all parameter keys/shapes.
++    adapter = Model(model_config)
++    report["strict_load_success"] = True
++    report["strict_load_method"] = "Model -> ACT -> policy.load_state_dict (default strict=True)"
++    policy = adapter.model.policy
++    policy.eval()
++    with torch.inference_mode():
++        actual_actions = policy(
++            torch.from_numpy(qpos).to(adapter.model.device),
++            torch.from_numpy(images).to(adapter.model.device),
++        ).cpu().numpy()
++    if actual_actions.shape != expected_actions.shape or not np.isfinite(actual_actions).all():
++        raise AssertionError("Reloaded policy produced an invalid action chunk")
++    report["policy_output_shape"] = list(actual_actions.shape)
++    report["policy_max_abs_error"] = float(np.max(np.abs(actual_actions - expected_actions)))
++    np.testing.assert_allclose(actual_actions, expected_actions, rtol=RTOL, atol=ATOL)
++    report["policy_reference_match"] = True
++
++    stats = adapter.model.stats
++    for key in ("qpos_mean", "qpos_std", "action_mean", "action_std"):
++        value = np.asarray(stats[key])
++        if value.shape != (action_dim,) or not np.isfinite(value).all():
++            raise ValueError(f"Invalid checkpoint normalization statistic: {key}")
++        if key.endswith("std") and not np.all(value > 0):
++            raise ValueError(f"Normalization standard deviation must be positive: {key}")
++    raw_qpos = qpos[0] * stats["qpos_std"] + stats["qpos_mean"]
++    observation = {
++        "state": unpack_robot_state(raw_qpos, args.action_type, robot_info, source_type="obs"),
++        "vision": {},
++    }
++    image_roundtrip_error = 0.0
++    for index, camera_name in enumerate(camera_names):
++        color = np.rint(np.moveaxis(images[0, index], 0, -1) * 255.0).astype(np.uint8)
++        reconstructed = np.moveaxis(color.astype(np.float32) / 255.0, -1, 0)
++        image_roundtrip_error = max(
++            image_roundtrip_error, float(np.max(np.abs(reconstructed - images[0, index])))
++        )
++        observation["vision"][camera_name] = {"color": color}
++    report["uint8_image_roundtrip_max_abs_error"] = image_roundtrip_error
++    report["qpos_roundtrip_max_abs_error"] = float(
++        np.max(np.abs((raw_qpos - stats["qpos_mean"]) / stats["qpos_std"] - qpos[0]))
++    )
++
++    adapter.reset()
++    adapter.update_obs(observation)
++    result = adapter.get_action()
++    if not isinstance(result, list) or len(result) != 1:
++        raise AssertionError("ACT Model.get_action must return one structured action")
++    raw_action = pack_robot_state(
++        {"state": result[0]}, args.action_type, robot_info, source_type="obs"
++    )
++    if raw_action.shape != (action_dim,) or not np.isfinite(raw_action).all():
++        raise AssertionError("ACT Model.get_action produced an invalid robot action")
++    expected_raw_action = expected_actions[0, 0] * stats["action_std"] + stats["action_mean"]
++    report["adapter_output_shape"] = list(raw_action.shape)
++    report["adapter_output_finite"] = True
++    report["adapter_max_abs_error"] = float(np.max(np.abs(raw_action - expected_raw_action)))
++    np.testing.assert_allclose(raw_action, expected_raw_action, rtol=RTOL, atol=ATOL)
++    report["adapter_reference_match"] = True
++    report["status"] = "passed"
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--ckpt-dir", type=Path, required=True)
++    parser.add_argument("--env-cfg-type", default="aloha_agilex")
++    parser.add_argument("--action-type", choices=("joint",), default="joint")
++    args = parser.parse_args()
++    if not args.ckpt_dir.is_absolute():
++        parser.error("--ckpt-dir must be an absolute path")
++    if not args.ckpt_dir.is_dir():
++        parser.error(f"Checkpoint directory does not exist: {args.ckpt_dir}")
++    args.ckpt_dir = args.ckpt_dir.resolve()
++    report = {
++        "status": "failed",
++        "strict_load_success": False,
++        "policy_reference_match": False,
++        "adapter_reference_match": False,
++        "checkpoint_dir": str(args.ckpt_dir),
++        "env_cfg_type": args.env_cfg_type,
++        "action_type": args.action_type,
++        "validated_at_utc": datetime.now(timezone.utc).isoformat(),
++        "process_id": os.getpid(),
++    }
++    report_path = args.ckpt_dir / "checkpoint_validation.json"
++    try:
++        validate(args, report)
++    except Exception as error:
++        report["error"] = f"{type(error).__name__}: {error}"
++        raise
++    finally:
++        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
++        print(f"Checkpoint validation {report['status']}: {report_path}", flush=True)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/env_cfg/task_config/demo_smoke.yml b/env_cfg/task_config/demo_smoke.yml
+new file mode 100644
+--- /dev/null
++++ b/env_cfg/task_config/demo_smoke.yml
+@@ -0,0 +1,38 @@
++# Small collection check based on demo_clean; output is isolated under data/demo_smoke.
++# On machines where OIDN fails, launch with ROBOTWIN_RAY_TRACING_DENOISER=none.
++render_freq: 0
++episode_num: 3
++use_seed: false
++save_freq: 15
++embodiment: [aloha-agilex]
++language_num: 100
++eval_instruction: seen
++domain_randomization:
++  random_background: false
++  cluttered_table: false
++  clean_background_rate: 1
++  random_head_camera_dis: 0
++  random_table_height: 0
++  random_light: false
++  crazy_random_light_rate: 0
++camera:
++  head_camera_type: D435
++  wrist_camera_type: D435
++  collect_head_camera: true
++  collect_wrist_camera: true
++data_type:
++  rgb: true
++  third_view: false
++  depth: false
++  pointcloud: false
++  observer: false
++  endpose: true
++  qpos: true
++  mesh_segmentation: false
++  actor_segmentation: false
++pcd_down_sample_num: 1024
++pcd_crop: true
++save_path: ./data
++clear_cache_freq: 1
++collect_data: true
++eval_video_log: true
+diff --git a/env_cfg/task_config/demo_train20.yml b/env_cfg/task_config/demo_train20.yml
+new file mode 100644
+--- /dev/null
++++ b/env_cfg/task_config/demo_train20.yml
+@@ -0,0 +1,38 @@
++# Small collection check based on demo_clean; output is isolated under data/demo_smoke.
++# On machines where OIDN fails, launch with ROBOTWIN_RAY_TRACING_DENOISER=none.
++render_freq: 0
++episode_num: 20
++use_seed: false
++save_freq: 15
++embodiment: [aloha-agilex]
++language_num: 100
++eval_instruction: seen
++domain_randomization:
++  random_background: false
++  cluttered_table: false
++  clean_background_rate: 1
++  random_head_camera_dis: 0
++  random_table_height: 0
++  random_light: false
++  crazy_random_light_rate: 0
++camera:
++  head_camera_type: D435
++  wrist_camera_type: D435
++  collect_head_camera: true
++  collect_wrist_camera: true
++data_type:
++  rgb: true
++  third_view: false
++  depth: false
++  pointcloud: false
++  observer: false
++  endpose: true
++  qpos: true
++  mesh_segmentation: false
++  actor_segmentation: false
++pcd_down_sample_num: 1024
++pcd_crop: true
++save_path: ./data
++clear_cache_freq: 1
++collect_data: true
++eval_video_log: true
+diff --git a/env_cfg/task_config/demo_train50.yml b/env_cfg/task_config/demo_train50.yml
+new file mode 100644
+--- /dev/null
++++ b/env_cfg/task_config/demo_train50.yml
+@@ -0,0 +1,37 @@
++# Balanced expansion of the preserved 20 demonstrations.
++render_freq: 0
++episode_num: 50
++use_seed: false
++save_freq: 15
++embodiment: [aloha-agilex]
++language_num: 100
++eval_instruction: seen
++domain_randomization:
++  random_background: false
++  cluttered_table: false
++  clean_background_rate: 1
++  random_head_camera_dis: 0
++  random_table_height: 0
++  random_light: false
++  crazy_random_light_rate: 0
++camera:
++  head_camera_type: D435
++  wrist_camera_type: D435
++  collect_head_camera: true
++  collect_wrist_camera: true
++data_type:
++  rgb: true
++  third_view: false
++  depth: false
++  pointcloud: false
++  observer: false
++  endpose: true
++  qpos: true
++  mesh_segmentation: false
++  actor_segmentation: false
++pcd_down_sample_num: 1024
++pcd_crop: true
++save_path: ./data
++clear_cache_freq: 1
++collect_data: true
++eval_video_log: true

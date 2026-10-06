@@ -1,0 +1,994 @@
+{
+  "demo_smoke-stack_blocks_two-aloha_agilex-joint-0": {
+    "training_config.json": {
+      "num_epochs": 3,
+      "ckpt_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_smoke-stack_blocks_two-aloha_agilex-joint-0",
+      "episode_len": 5000,
+      "state_dim": 14,
+      "lr": 1e-05,
+      "policy_class": "ACT",
+      "onscreen_render": false,
+      "policy_config": {
+        "lr": 1e-05,
+        "num_queries": 50,
+        "kl_weight": 10,
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "lr_backbone": 1e-05,
+        "backbone": "resnet18",
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "camera_names": [
+          "cam_head",
+          "cam_right_wrist",
+          "cam_left_wrist"
+        ]
+      },
+      "ckpt_setting": "demo_smoke-stack_blocks_two-aloha_agilex-joint",
+      "seed": 0,
+      "temporal_agg": false,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "save_freq": 1,
+      "batch_size": 1,
+      "dataset_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_smoke/stack_blocks_two/aloha_agilex-joint",
+      "train_episode_ids": [
+        0,
+        2
+      ],
+      "validation_episode_ids": [
+        1
+      ]
+    },
+    "checkpoint_validation.json": {
+      "status": "passed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": true,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_smoke-stack_blocks_two-aloha_agilex-joint-0",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-09-29T15:47:38.486633+00:00",
+      "process_id": 184163,
+      "checkpoint_sha256": "9f5824d3eb79e742237f53f3d36f61f48655e4d8668d4f3171415406e7781f31",
+      "dataset_stats_sha256": "c4d1534ee04c499f84097ba5e8d4871969699d68d6997e8c3b7c02342f462f34",
+      "reference_sha256": "d67aa1056714a7cb7c971e1fd509d8572dc37badfb56309ecd248853f60f7e41",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.0
+    },
+    "checkpoint_validation_before_layout_fix.json": {
+      "status": "failed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": false,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_smoke-stack_blocks_two-aloha_agilex-joint-0",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-09-29T15:40:56.200231+00:00",
+      "process_id": 182721,
+      "checkpoint_sha256": "9f5824d3eb79e742237f53f3d36f61f48655e4d8668d4f3171415406e7781f31",
+      "dataset_stats_sha256": "c4d1534ee04c499f84097ba5e8d4871969699d68d6997e8c3b7c02342f462f34",
+      "reference_sha256": "d67aa1056714a7cb7c971e1fd509d8572dc37badfb56309ecd248853f60f7e41",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.00045925378799438477,
+      "error": "AssertionError: \nNot equal to tolerance rtol=1e-05, atol=1e-06\n\nMismatched elements: 13 / 14 (92.9%)\nMax absolute difference: 0.00045925\nMax relative difference: 0.00614217\n x: array([-0.639551,  2.373211,  1.507025, -1.057531, -0.00568 , -0.936218,\n        0.762046,  0.091712, -0.17104 , -0.12676 ,  0.096876, -0.002539,\n       -0.069116,  1.180385], dtype=float32)\n y: array([-0.639644,  2.373166,  1.507042, -1.057402, -0.005679, -0.936677,\n        0.762129,  0.091649, -0.170986, -0.12637 ,  0.09686 , -0.002524,\n       -0.069236,  1.180479], dtype=float32)"
+    },
+    "training_metrics_summary": {
+      "epochs_recorded": 3,
+      "first": {
+        "epoch": 1,
+        "optimizer_steps": 2,
+        "train": {
+          "l1": 0.6691263914108276,
+          "kl": 8.125349998474121,
+          "loss": 81.92262268066406
+        },
+        "validation_before_epoch": {
+          "l1": 1.084637999534607,
+          "kl": 6.589226722717285,
+          "loss": 66.9769058227539
+        },
+        "mean_gradient_norm": 1367.9058227539062,
+        "elapsed_seconds": 1.227877746001468,
+        "peak_cuda_allocated_bytes": 2203557376,
+        "peak_cuda_reserved_bytes": 2403336192
+      },
+      "last": {
+        "epoch": 3,
+        "optimizer_steps": 6,
+        "train": {
+          "l1": 0.35425400733947754,
+          "kl": 4.217107772827148,
+          "loss": 42.52532958984375
+        },
+        "validation_before_epoch": {
+          "l1": 1.6589833498001099,
+          "kl": 7.857524871826172,
+          "loss": 80.2342300415039
+        },
+        "mean_gradient_norm": 945.9284973144531,
+        "elapsed_seconds": 2.489264308998827,
+        "peak_cuda_allocated_bytes": 2204762624,
+        "peak_cuda_reserved_bytes": 2405433344
+      }
+    }
+  },
+  "demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251": {
+    "training_config.json": {
+      "num_epochs": 2000,
+      "ckpt_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251",
+      "episode_len": 5000,
+      "state_dim": 14,
+      "lr": 1e-05,
+      "policy_class": "ACT",
+      "onscreen_render": false,
+      "policy_config": {
+        "lr": 1e-05,
+        "num_queries": 50,
+        "kl_weight": 10,
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "lr_backbone": 1e-05,
+        "backbone": "resnet18",
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "camera_names": [
+          "cam_head",
+          "cam_right_wrist",
+          "cam_left_wrist"
+        ]
+      },
+      "ckpt_setting": "demo_train20-stack_blocks_two-aloha_agilex-joint",
+      "seed": 0,
+      "temporal_agg": false,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "save_freq": 200,
+      "batch_size": 1,
+      "dataset_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_train20/stack_blocks_two/aloha_agilex-joint",
+      "train_episode_ids": [
+        3,
+        16,
+        6,
+        10,
+        2,
+        14,
+        4,
+        17,
+        7,
+        1,
+        13,
+        0,
+        19,
+        18,
+        9,
+        15
+      ],
+      "validation_episode_ids": [
+        8,
+        12,
+        11,
+        5
+      ]
+    },
+    "checkpoint_validation.json": {
+      "status": "passed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": true,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-09-30T01:45:56.714529+00:00",
+      "process_id": 236494,
+      "checkpoint_sha256": "ffd4e19962d00888b5cb211707aecd41353bc2795e4a2ea2703fe41e6d9d699b",
+      "dataset_stats_sha256": "e373e7b3ce9d736f20e3c23fa72da7027cf8eeb373cee58c3b4a98f0cd38931c",
+      "reference_sha256": "77e58b035f321cac8164bb316da1716aed6472ed308d59e4f5af1dd54bb72649",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.0
+    },
+    "training_metrics_summary": {
+      "epochs_recorded": 2000,
+      "first": {
+        "epoch": 1,
+        "optimizer_steps": 16,
+        "train": {
+          "l1": 0.8492609262466431,
+          "kl": 4.259377479553223,
+          "loss": 43.44303512573242
+        },
+        "validation_before_epoch": {
+          "l1": 0.6856481432914734,
+          "kl": 6.631915092468262,
+          "loss": 67.00480651855469
+        },
+        "mean_gradient_norm": 976.703556060791,
+        "elapsed_seconds": 2.6703872789948946,
+        "peak_cuda_allocated_bytes": 2204780032,
+        "peak_cuda_reserved_bytes": 2405433344
+      },
+      "last": {
+        "epoch": 2000,
+        "optimizer_steps": 32000,
+        "train": {
+          "l1": 0.063801109790802,
+          "kl": 0.007143750786781311,
+          "loss": 0.13523860275745392
+        },
+        "validation_before_epoch": {
+          "l1": 0.10861793160438538,
+          "kl": 0.0016968324780464172,
+          "loss": 0.12558625638484955
+        },
+        "mean_gradient_norm": 26.186046957969666,
+        "elapsed_seconds": 4112.100160970003,
+        "peak_cuda_allocated_bytes": 2257832960,
+        "peak_cuda_reserved_bytes": 2480930816
+      }
+    }
+  },
+  "demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100": {
+    "training_config.json": {
+      "num_epochs": 4000,
+      "ckpt_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100",
+      "episode_len": 5000,
+      "state_dim": 14,
+      "lr": 1e-05,
+      "policy_class": "ACT",
+      "onscreen_render": false,
+      "policy_config": {
+        "lr": 1e-05,
+        "num_queries": 50,
+        "kl_weight": 10,
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "lr_backbone": 1e-05,
+        "backbone": "resnet18",
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "camera_names": [
+          "cam_head",
+          "cam_right_wrist",
+          "cam_left_wrist"
+        ]
+      },
+      "ckpt_setting": "demo_train20-stack_blocks_two-aloha_agilex-joint",
+      "seed": 0,
+      "temporal_agg": false,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "save_freq": 200,
+      "batch_size": 1,
+      "dataset_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_train20/stack_blocks_two/aloha_agilex-joint",
+      "train_episode_ids": [
+        3,
+        16,
+        6,
+        10,
+        2,
+        14,
+        4,
+        17,
+        7,
+        1,
+        13,
+        0,
+        19,
+        18,
+        9,
+        15
+      ],
+      "validation_episode_ids": [
+        8,
+        12,
+        11,
+        5
+      ],
+      "start_epoch": 2000,
+      "initial_optimizer_steps": 32000,
+      "warm_start": {
+        "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251/policy_last.ckpt",
+        "optimizer_reset": true,
+        "random_state_reset": true,
+        "source_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-20260930_005251"
+      }
+    },
+    "checkpoint_validation.json": {
+      "status": "passed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": true,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train20-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_112100",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-10-04T04:51:08.698949+00:00",
+      "process_id": 87705,
+      "checkpoint_sha256": "65219b8295aaa703abada4a6ea919b6ae82ac5bf9748cffa9a068f0786413873",
+      "dataset_stats_sha256": "b3a051dd35c5372ae30be4665442aef3f8db023cfa9ce7edb2c0708c99752035",
+      "reference_sha256": "c9d1e0e4314a8639ed00183a40e18d9295b28575538010e2193e3ffabb302283",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.0
+    },
+    "training_metrics_summary": {
+      "epochs_recorded": 2000,
+      "first": {
+        "epoch": 2001,
+        "optimizer_steps": 32016,
+        "optimizer_steps_this_run": 16,
+        "train": {
+          "l1": 0.08106401562690735,
+          "kl": 0.007334427908062935,
+          "loss": 0.1544082909822464
+        },
+        "validation_before_epoch": {
+          "l1": 0.13448397815227509,
+          "kl": 0.002124868333339691,
+          "loss": 0.155732661485672
+        },
+        "mean_gradient_norm": 28.433550596237183,
+        "elapsed_seconds": 3.4958159090019763,
+        "peak_cuda_allocated_bytes": 2204780032,
+        "peak_cuda_reserved_bytes": 2405433344
+      },
+      "last": {
+        "epoch": 4000,
+        "optimizer_steps": 64000,
+        "optimizer_steps_this_run": 32000,
+        "train": {
+          "l1": 0.04181757569313049,
+          "kl": 0.0018989238888025284,
+          "loss": 0.06080681458115578
+        },
+        "validation_before_epoch": {
+          "l1": 0.08678264915943146,
+          "kl": 0.0006070509552955627,
+          "loss": 0.09285315871238708
+        },
+        "mean_gradient_norm": 13.53432035446167,
+        "elapsed_seconds": 5318.648668267997,
+        "peak_cuda_allocated_bytes": 2206680576,
+        "peak_cuda_reserved_bytes": 2422210560
+      }
+    }
+  },
+  "demo_train50-stack_blocks_two-aloha_agilex-joint-0-20261004_171920": {
+    "training_config.json": {
+      "num_epochs": 2000,
+      "ckpt_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-20261004_171920",
+      "episode_len": 5000,
+      "state_dim": 14,
+      "lr": 1e-05,
+      "policy_class": "ACT",
+      "onscreen_render": false,
+      "policy_config": {
+        "lr": 1e-05,
+        "num_queries": 50,
+        "kl_weight": 10,
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "lr_backbone": 1e-05,
+        "backbone": "resnet18",
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "camera_names": [
+          "cam_head",
+          "cam_right_wrist",
+          "cam_left_wrist"
+        ]
+      },
+      "ckpt_setting": "demo_train50-stack_blocks_two-aloha_agilex-joint",
+      "seed": 0,
+      "temporal_agg": false,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "save_freq": 200,
+      "split_file": "${ROBOTWIN_ROOT}/data/demo_train50/split_40_10.json",
+      "batch_size": 1,
+      "dataset_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_train50/stack_blocks_two/aloha_agilex-joint",
+      "train_episode_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        37,
+        39,
+        40,
+        41,
+        42,
+        44,
+        45,
+        46,
+        47,
+        49
+      ],
+      "validation_episode_ids": [
+        5,
+        8,
+        11,
+        12,
+        21,
+        31,
+        36,
+        38,
+        43,
+        48
+      ]
+    },
+    "checkpoint_validation.json": {
+      "status": "passed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": true,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-20261004_171920",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-10-04T11:58:02.448382+00:00",
+      "process_id": 170028,
+      "checkpoint_sha256": "ea3389798eb49f5b7b5532ca7a4afd00463da35e85cb0eb9ed8ae633d163fa9e",
+      "dataset_stats_sha256": "9430ce0b6184b4dadb7f82fc7a3ec5b737e0886a9ee6570ba1bc7e1b127d2aa9",
+      "reference_sha256": "02dca609cf08c0488c4d2a06b469cedd5c1cf74b6ed2a760389c3c5e0c3ab57c",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.0
+    },
+    "training_metrics_summary": {
+      "epochs_recorded": 2000,
+      "first": {
+        "epoch": 1,
+        "optimizer_steps": 40,
+        "optimizer_steps_this_run": 40,
+        "train": {
+          "l1": 0.695609986782074,
+          "kl": 2.7570981979370117,
+          "loss": 28.266584396362305
+        },
+        "validation_before_epoch": {
+          "l1": 0.8895648121833801,
+          "kl": 7.552518367767334,
+          "loss": 76.41474914550781
+        },
+        "mean_gradient_norm": 755.470384979248,
+        "elapsed_seconds": 5.57966270702309,
+        "peak_cuda_allocated_bytes": 2204826112,
+        "peak_cuda_reserved_bytes": 2407530496
+      },
+      "last": {
+        "epoch": 2000,
+        "optimizer_steps": 80000,
+        "optimizer_steps_this_run": 80000,
+        "train": {
+          "l1": 0.05598257854580879,
+          "kl": 0.00101086578797549,
+          "loss": 0.06609123200178146
+        },
+        "validation_before_epoch": {
+          "l1": 0.09663484245538712,
+          "kl": 0.0002834111510310322,
+          "loss": 0.09946895390748978
+        },
+        "mean_gradient_norm": 10.3521977186203,
+        "elapsed_seconds": 9490.559946224996,
+        "peak_cuda_allocated_bytes": 2208751616,
+        "peak_cuda_reserved_bytes": 2438987776
+      }
+    }
+  },
+  "demo_train50-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_232142": {
+    "training_config.json": {
+      "num_epochs": 4000,
+      "ckpt_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_232142",
+      "episode_len": 5000,
+      "state_dim": 14,
+      "lr": 1e-05,
+      "policy_class": "ACT",
+      "onscreen_render": false,
+      "policy_config": {
+        "lr": 1e-05,
+        "num_queries": 50,
+        "kl_weight": 10,
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "lr_backbone": 1e-05,
+        "backbone": "resnet18",
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "camera_names": [
+          "cam_head",
+          "cam_right_wrist",
+          "cam_left_wrist"
+        ]
+      },
+      "ckpt_setting": "demo_train50-stack_blocks_two-aloha_agilex-joint",
+      "seed": 0,
+      "temporal_agg": false,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "save_freq": 200,
+      "split_file": "${ROBOTWIN_ROOT}/data/demo_train50/split_40_10.json",
+      "batch_size": 1,
+      "dataset_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_train50/stack_blocks_two/aloha_agilex-joint",
+      "train_episode_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        32,
+        33,
+        34,
+        35,
+        37,
+        39,
+        40,
+        41,
+        42,
+        44,
+        45,
+        46,
+        47,
+        49
+      ],
+      "validation_episode_ids": [
+        5,
+        8,
+        11,
+        12,
+        21,
+        31,
+        36,
+        38,
+        43,
+        48
+      ],
+      "start_epoch": 2000,
+      "initial_optimizer_steps": 80000,
+      "warm_start": {
+        "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-20261004_171920/policy_last.ckpt",
+        "optimizer_reset": true,
+        "random_state_reset": true,
+        "source_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-20261004_171920"
+      }
+    },
+    "checkpoint_validation.json": {
+      "status": "passed",
+      "strict_load_success": true,
+      "policy_reference_match": true,
+      "adapter_reference_match": true,
+      "checkpoint_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50-stack_blocks_two-aloha_agilex-joint-0-warm4000-20261004_232142",
+      "env_cfg_type": "aloha_agilex",
+      "action_type": "joint",
+      "validated_at_utc": "2026-10-04T18:00:14.758828+00:00",
+      "process_id": 216036,
+      "checkpoint_sha256": "7a7b0463dfe8a35ca16b4989a5a017c01c4cf104436a45ca1b9ba2628e54bd85",
+      "dataset_stats_sha256": "52dbfe237e6fd4b0874a36f519eb45fcddf85bb0ac3ac321b1db86585ac8be12",
+      "reference_sha256": "fd387479899997b626465406386e39144a6af70c61bfc501062c041ab95071dd",
+      "seed": 0,
+      "camera_names": [
+        "cam_head",
+        "cam_right_wrist",
+        "cam_left_wrist"
+      ],
+      "action_dim": 14,
+      "chunk_size": 50,
+      "device": "cuda:0",
+      "temporal_agg": false,
+      "torch_home": "${ROBOTWIN_ROOT}/data/model_cache/torch",
+      "model_parameters": {
+        "hidden_dim": 512,
+        "dim_feedforward": 3200,
+        "enc_layers": 4,
+        "dec_layers": 7,
+        "nheads": 8,
+        "backbone": "resnet18"
+      },
+      "tolerances": {
+        "rtol": 1e-05,
+        "atol": 1e-06
+      },
+      "reference_shapes": {
+        "images": [
+          1,
+          3,
+          3,
+          480,
+          640
+        ],
+        "qpos": [
+          1,
+          14
+        ],
+        "actions": [
+          1,
+          50,
+          14
+        ]
+      },
+      "strict_load_method": "Model -> ACT -> policy.load_state_dict (default strict=True)",
+      "policy_output_shape": [
+        1,
+        50,
+        14
+      ],
+      "policy_max_abs_error": 0.0,
+      "uint8_image_roundtrip_max_abs_error": 0.0,
+      "qpos_roundtrip_max_abs_error": 0.0,
+      "adapter_output_shape": [
+        14
+      ],
+      "adapter_output_finite": true,
+      "adapter_max_abs_error": 0.0
+    },
+    "training_metrics_summary": {
+      "epochs_recorded": 2000,
+      "first": {
+        "epoch": 2001,
+        "optimizer_steps": 80040,
+        "optimizer_steps_this_run": 40,
+        "train": {
+          "l1": 0.050338245928287506,
+          "kl": 0.0008157514384947717,
+          "loss": 0.05849574878811836
+        },
+        "validation_before_epoch": {
+          "l1": 0.17956702411174774,
+          "kl": 0.0002272248239023611,
+          "loss": 0.18183927237987518
+        },
+        "mean_gradient_norm": 9.809983432292938,
+        "elapsed_seconds": 5.488015687005827,
+        "peak_cuda_allocated_bytes": 2204826112,
+        "peak_cuda_reserved_bytes": 2407530496
+      },
+      "last": {
+        "epoch": 4000,
+        "optimizer_steps": 160000,
+        "optimizer_steps_this_run": 80000,
+        "train": {
+          "l1": 0.04183820262551308,
+          "kl": 0.00013199970999266952,
+          "loss": 0.043158192187547684
+        },
+        "validation_before_epoch": {
+          "l1": 0.05778539180755615,
+          "kl": 4.259646084392443e-05,
+          "loss": 0.05821135640144348
+        },
+        "mean_gradient_norm": 4.496100687980652,
+        "elapsed_seconds": 9462.685015383991,
+        "peak_cuda_allocated_bytes": 2208751616,
+        "peak_cuda_reserved_bytes": 2424307712
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+date,task,policy,dataset,embodiment,action_type,instruction_type,target_episodes,success_rate,status
+2026-09-30,stack_blocks_two,ACT,demo_smoke,aloha_agilex,joint,seen,3,0.0,needs_investigation
+2026-09-30,stack_blocks_two,ACT,demo_train20,aloha_agilex,joint,seen,20,0.0,needs_investigation
+
