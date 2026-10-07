@@ -1,4 +1,5 @@
 date,task,policy,dataset,embodiment,action_type,instruction_type,target_episodes,success_rate,status
 2026-09-30,stack_blocks_two,ACT,demo_smoke,aloha_agilex,joint,seen,3,0.0,needs_investigation
 2026-09-30,stack_blocks_two,ACT,demo_train20,aloha_agilex,joint,seen,20,0.0,needs_investigation
-
+2026-10-06,stack_blocks_two,ACT_repaired,demo_train50_wrist_v2,aloha_agilex,joint,seen,5,0.0,fixed_development_scenes
+2026-10-06,stack_blocks_two,ACT_repaired_RGBD_visual_guard_v2,demo_train50_wrist_v2,aloha_agilex,joint,seen,20,0.95,frozen_controller_new_seeds

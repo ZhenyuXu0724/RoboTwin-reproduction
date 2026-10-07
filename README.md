@@ -13,10 +13,14 @@
 | 2026-10-04 | `stack_blocks_two` | ExpertReplay | episode 0 | 1.0 | 单条专家轨迹回放通过 |
 | 2026-10-05 | `stack_blocks_two` | ACT | `demo_train50` / 4000 epoch | 0/5 | checkpoint 验证通过；固定场景抓取仍失败 |
 | 2026-10-05 | `stack_blocks_two` | ACT | 同模型执行 10 步 | 0/5 | 预测 chunk 50，单次配对诊断 |
+| 2026-10-06 | `stack_blocks_two` | 修复 ACT | `demo_train50_wrist_v2` | 0/5 | 纯 ACT，五个固定开发场景 |
+| 2026-10-06 | `stack_blocks_two` | 修复 ACT + RGB-D 校正 | `demo_train50_wrist_v2` | **19/20（95%）** | 冻结配置，20 个新种子，组合方案阶段成果 |
 
 详见 [`experiments/2026-09-30-act-stack-blocks/`](experiments/2026-09-30-act-stack-blocks/README.md)。
 
-最新修改与尝试见 [`experiments/2026-10-06-act-diagnostics/`](experiments/2026-10-06-act-diagnostics/README.md)：完整代码补丁、诊断脚本、35 份证据报告、5 个训练 run 和评测摘要。现有 ACT 回归测试 14/14 通过；完整补丁从锁定基线应用，勿与旧渲染补丁重复叠加。
+最新阶段成果见 [`experiments/2026-10-07-stack-blocks-rgbd/`](experiments/2026-10-07-stack-blocks-rgbd/README.md)：修复 ACT、腕部相机配置和 RGB-D 校正代码，19/20 逐场景证据、失败分析与复现步骤。95% 是组合方案结果，额外使用深度、相机标定及已知颜色/尺寸，不能归因于纯 ACT。现有测试 20/20 通过。
+
+此前排查记录见 [`experiments/2026-10-06-act-diagnostics/`](experiments/2026-10-06-act-diagnostics/README.md)。各轮完整补丁从锁定基线应用，勿重复叠加。
 
 ## 仓库内容
 
@@ -63,4 +67,4 @@ Git 只保存代码、配置、文档、指标和少量展示媒体。以下内�
 
 ## 发布状态
 
-公开 GitHub 仓库已建立；复现记录和最新代码快照通过 PR #1 提交审阅。实验数据、权重和完整视频仍保存在本地。
+公开 GitHub 仓库已建立，初始记录已通过 PR #1 合并。最新 RGB-D 堆叠成果另行提交 PR 审阅。实验数据、权重和完整视频仍保存在本地，尚未提供公开下载地址。
