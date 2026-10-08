@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "expert_points": 550,
+  "validation_noise_repeat_observations": 20,
+  "model_retrained": false,
+  "formal_results_unchanged": true,
+  "replay_max_command_difference": 0.0,
+  "checkpoint_sha256": "67dc045e12f46e7a3516037877612a0e9482d04c4fa9b8c7063c34c8646c75a8",
+  "report_sha256": "61d4367f1861be088a9a839b40a44e71b7d735639cb1aabf0ba45181fc46af22"
+}

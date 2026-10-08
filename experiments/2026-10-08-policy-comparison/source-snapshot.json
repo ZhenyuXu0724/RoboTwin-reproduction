@@ -1,0 +1,102 @@
+{
+  "captured_on": "2026-10-08",
+  "files": {
+    "scripts/dp_comparison/act_ablation_followup.py": {
+      "bytes": 10508,
+      "sha256": "57ff5764c2459ba3af861c1e29229e58811f7bbd116a9779736010215b529cd1"
+    },
+    "scripts/dp_comparison/act_rgbd_followup.py": {
+      "bytes": 9049,
+      "sha256": "b659313e531afb9879b51117b31568a6b53231c76897e3687563d6dcbb21ca5c"
+    },
+    "scripts/dp_comparison/common.py": {
+      "bytes": 6641,
+      "sha256": "53241d59612b284c13e44bfb9cb109b0b03c31fafdc33f955394ebd335f66da3"
+    },
+    "scripts/dp_comparison/diagnose_dp.py": {
+      "bytes": 8351,
+      "sha256": "af7431c98371e706cd9f572b158ce089b87c2dde94e2187f08ea15a5d920ad66"
+    },
+    "scripts/dp_comparison/diagnose_rollout.py": {
+      "bytes": 2621,
+      "sha256": "a6dff399b4a3c4df21f275d87fc978937155304321ae54e75e53e44cb4308b5a"
+    },
+    "scripts/dp_comparison/diagnose_structure.py": {
+      "bytes": 4440,
+      "sha256": "3d37ce1ce74cddc28c7e125f34e89ad607aaf472bb2e4c62bc2ac66e5d573059"
+    },
+    "scripts/dp_comparison/evaluate.py": {
+      "bytes": 7706,
+      "sha256": "aede24fe77c4bfcf24941edb581d4df4e3a9dd64f93e479cf4395c55773526d1"
+    },
+    "scripts/dp_comparison/evaluate_act_ablation.py": {
+      "bytes": 966,
+      "sha256": "3bf9a1990a7bcf7a31fe1065b666b66dea014b4338c735f1558414a510a7671f"
+    },
+    "scripts/dp_comparison/evaluate_act_rgbd.py": {
+      "bytes": 5789,
+      "sha256": "34ad874a635aee0ccb091a3cf2340f0fba0fe8a0a5a713b12e09a6335aada8f0"
+    },
+    "scripts/dp_comparison/evaluate_rgbd.py": {
+      "bytes": 6693,
+      "sha256": "e2d21da8c1efad4c0e817a117d1ec53be81dfd96d5c55417553e0e4bb569ef43"
+    },
+    "scripts/dp_comparison/launch.py": {
+      "bytes": 1021,
+      "sha256": "3d4a0ddf660ce77507d0e7c1e466445328fc965ca7b328b025bbba7d18848ba1"
+    },
+    "scripts/dp_comparison/pipeline.py": {
+      "bytes": 7668,
+      "sha256": "d7eb00de880934857cabf148d54b65c117715a9076109d87fc53fba4f1f22551"
+    },
+    "scripts/dp_comparison/report_comparison.py": {
+      "bytes": 7691,
+      "sha256": "642428f73e2da12890c92eddc173db1e51215443b5e2307566d670f931964bf5"
+    },
+    "scripts/dp_comparison/resume_evaluation.py": {
+      "bytes": 7482,
+      "sha256": "b5fe79327b651052f72eef0a220537d1fcfb9c463946be024a0bf287e0f7c3c9"
+    },
+    "scripts/dp_comparison/rgbd_followup.py": {
+      "bytes": 5670,
+      "sha256": "23c6433403c7ee44cf9940df24af6c88042e708a637ae7829ccaa85dcf55f6f0"
+    },
+    "scripts/dp_comparison/summarize_diagnosis.py": {
+      "bytes": 3938,
+      "sha256": "73d9da79a91195ee17bf4308d6a7e5d5258ade6b74213cb9d49588028afc407f"
+    },
+    "scripts/dp_comparison/sync_final_reports.py": {
+      "bytes": 6858,
+      "sha256": "1f31a10bbc0c8a0fe819842b78f9ee90611bcb62d925a82e893ae5a465241f2a"
+    },
+    "scripts/dp_comparison/test_act_ablation.py": {
+      "bytes": 1931,
+      "sha256": "997c75e5936664980d1427a5bf964e0d1e5dd9244edba3bc6a0f5be0468d8914"
+    },
+    "scripts/dp_comparison/test_contracts.py": {
+      "bytes": 1584,
+      "sha256": "80e34377eaa55a919ac248b7c254c2abcfab7775bb81e4a43b2a372e7e869cd2"
+    },
+    "scripts/dp_comparison/test_guard_initfix.py": {
+      "bytes": 1628,
+      "sha256": "3fa61f079ca37ec399116c517ffbd59910c9992261f16cf01cadfe90a83e817d"
+    },
+    "scripts/dp_comparison/train.py": {
+      "bytes": 6344,
+      "sha256": "6d59fbb8b10073e61211eb42cd748ca4e0a8c4d4beaf7f2fcf485f01d901c37a"
+    },
+    "scripts/dp_comparison/verify_diagnosis.py": {
+      "bytes": 2694,
+      "sha256": "3c805e66a23f260a2517929d7d8c6aa278bb0162878916ea16a759e26d54b98b"
+    },
+    "scripts/dp_comparison/visual_guard_initfix.py": {
+      "bytes": 9363,
+      "sha256": "8d30af9a66469324a3fc133b7ea1c6de76f06ab995380b0d3651d9e516db29fc"
+    },
+    "scripts/dp_comparison/visual_guard_no_release.py": {
+      "bytes": 9458,
+      "sha256": "4d31e856d9b676ef4fcd96eca2c6fa7f32550822b05c1ddf252dbdda65334474"
+    }
+  },
+  "scope": "Current workflow scripts exported without edits. Historical frozen source hashes remain in experiment/protocol evidence; snapshot hashes do not replace them."
+}

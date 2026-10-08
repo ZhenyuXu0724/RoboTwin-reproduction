@@ -1,0 +1,44 @@
+{
+  "policy": "DP",
+  "seed": 2700000,
+  "actual_seed": 2700000,
+  "complete": true,
+  "valid": true,
+  "success": false,
+  "steps": 800,
+  "initial": {
+    "red": [
+      0.22596409916877747,
+      -0.02004317007958889,
+      0.7650007009506226
+    ],
+    "green": [
+      0.12061168253421783,
+      -0.005880000069737434,
+      0.7650007605552673
+    ]
+  },
+  "final": {
+    "red": [
+      0.26410943269729614,
+      -0.06141715869307518,
+      0.7650007009506226
+    ],
+    "green": [
+      0.10817204415798187,
+      -0.0017394530586898327,
+      0.7650009989738464
+    ]
+  },
+  "peak_lift_m": {
+    "red": 0.0001602768898010254,
+    "green": 2.384185791015625e-07
+  },
+  "prediction_calls": 100,
+  "prediction_seconds": 51.75708963570651,
+  "elapsed_seconds": 239.38620319397887,
+  "rgbd_guard": false,
+  "depth_input": false,
+  "actor_truth_for_control": false,
+  "untrained_smoke": false
+}

@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-08",
+  "scope": "repository material snapshot excluding .git and this manifest",
+  "files": {
+    ".github/pull_request_template.md": {
+      "bytes": 476,
+      "sha256": "36fd5734939959b3565b68ee3914c15da7b3159609c52d0dbc07715e54ee6326"
+    },
+    ".gitignore": {
+      "bytes": 844,
+      "sha256": "91789f18638d957e13589ed8934e69992fc71ee4449aaea48f587fade187374e"
+    },
+    "ARTIFACTS.md": {
+      "bytes": 3662,
+      "sha256": "a826bf362f26cd1ec071544636146da9b9c8ffe7996a9d1a548b595ede77f688"
+    },
+    "PROJECT_MATERIALS.md": {
+      "bytes": 4067,
+      "sha256": "0d51d19c6a31677dbd7dfc5d054c8768fb5d9213c1e3cffefcc8f7daa4ba1063"
+    },
+    "README.md": {
+      "bytes": 3941,
+      "sha256": "ec7236dc225133b3049d781c126d9d42ec4351c3652cbf1b26d6b0ea588c1969"
+    },
+    "configs/demo_smoke.yml": {
+      "bytes": 890,
+      "sha256": "9f01e0feb0d4e09116deb735f5c78865f615f835f9c647f2943eb5f971dc2906"
+    },
+    "configs/demo_train20.yml": {
+      "bytes": 896,
+      "sha256": "178fba6ee28838f3a97cab910f59b7f140bf097451cf61589c2be179fbf1fb4d"
+    },
+    "docs/act-training.md": {
+      "bytes": 1143,
+      "sha256": "ff3355e8f39381726679247596949538bf1f482509967b894ca68b81ee7a7a98"
+    },
+    "docs/data-collection.md": {
+      "bytes": 1019,
+      "sha256": "54614fd3857a06b81b41ba8c181de9ca814fb8ff3161863dea4b2bd61e6c4d19"
+    },
+    "docs/environment.md": {
+      "bytes": 1588,
+      "sha256": "f38992afc16ea8a690b8124f5da2d169abdf2af3fcbdcfec6eb5c2fea96a8bed"
+    },
+    "docs/materials-reproduction.md": {
+      "bytes": 4837,
+      "sha256": "9dbba9f252d2117ec34ebae7f1c365dd04ef843ea64b59245967681ab65606ca"
+    },
+    "docs/troubleshooting.md": {
+      "bytes": 947,
+      "sha256": "08456048c994f0e3d64a338285fbc0c1f4114c5ef4c564e563d1dd0431bf2495"
+    },
+    "experiments/2026-09-30-act-stack-blocks/README.md": {
+      "bytes": 1396,
+      "sha256": "88f0f4ddc2f509b081de8022d8cc553eeb03c096d86b36b096a15e8a00237c15"
+    },
+    "experiments/2026-09-30-act-stack-blocks/metrics.json": {
+      "bytes": 521,
+      "sha256": "8cac40d621d1477fb089e73fe0dad33564e0ae1971c65d5020e9882aa40888a8"
+    },
+    "experiments/2026-09-30-act-stack-blocks/notes.md": {
+      "bytes": 486,
+      "sha256": "3b3bffb08b59fade3c26d4703bf15f52249876db661ecebfe7dee9c4116e7fd3"
+    },
+    "experiments/2026-10-06-act-diagnostics/README.md": {
+      "bytes": 4883,
+      "sha256": "14f8bc3a4384d6730fc83628b2700abf69246fb94d6e8ba28d6a92cbbe094c91"
+    },
+    "experiments/2026-10-06-act-diagnostics/diagnostic-evidence.json": {
+      "bytes": 1256740,
+      "sha256": "54af460ace11df6de348218167bd2882d8c3cdcc58ba130d2c008b24abf82779"
+    },
+    "experiments/2026-10-06-act-diagnostics/diagnostic-scripts.patch": {
+      "bytes": 102983,
+      "sha256": "3d55a14c41480a27359a70e4dc5faa9cc21c4b2d470f2e56e58e2f3981f6f783"
+    },
+    "experiments/2026-10-06-act-diagnostics/evaluation-runs.csv": {
+      "bytes": 11163,
+      "sha256": "a6a99c325492a83710ecafc9b00962289d9b0a90d564d871a9426fab65d26010"
+    },
+    "experiments/2026-10-06-act-diagnostics/robotwin-workspace.patch": {
+      "bytes": 15591,
+      "sha256": "e3a3beae691ebf03fffcf54deff41d06a2ea673e427a328aa032b7cb321abc66"
+    },
+    "experiments/2026-10-06-act-diagnostics/training-and-validation.json": {
+      "bytes": 28263,
+      "sha256": "f4f479dd620a80b624feac7c4822838cab58d4811e615fc0ef3d2941342787b0"
+    },
+    "experiments/2026-10-06-act-diagnostics/xpolicylab-act.patch": {
+      "bytes": 42982,
+      "sha256": "845280aeb17d0aa1ed0bd15daa0a3a64ed2bf4f4360070fcf260c9a8aad37413"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/README.md": {
+      "bytes": 5653,
+      "sha256": "d9cf6712efe47d2fb511dae669169afe07c1c4ad92da36cf2fd0fd2211fed36e"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/artifact-manifest.json": {
+      "bytes": 1414,
+      "sha256": "049079e5de59f2770cc1266982543fe64e3a14bb19ca34e08ea3af00b55debcf"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/demo_train50_wrist_v2.yml": {
+      "bytes": 916,
+      "sha256": "40ca6f64271d9784212c760147a04ba25467683cb18c9acbdf4e457b80fd757c"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/evidence.json": {
+      "bytes": 593833,
+      "sha256": "c53956cdd549b760b00a730e09eaef5d7278b3ac77a4d5483a3edef0e1ae3045"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/frozen-test20-report.md": {
+      "bytes": 1997,
+      "sha256": "a8b59868fbd18aec576937e496b6311c9bd576e8cd1bb2b0574bcb06ddc70f1f"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/robotwin-workspace.patch": {
+      "bytes": 18746,
+      "sha256": "62b420ecb0d0eddf2426e24feb0914128bcb6f2a3563355a57f6cc85976eeac5"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/test20-results.csv": {
+      "bytes": 838,
+      "sha256": "17a3f4f4e4e15768fc3a394bd6cb49ecf280a7c894a1c6aa94ba4674e34010cc"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/training-and-controller.patch": {
+      "bytes": 288538,
+      "sha256": "ecbe78e100c0ea3db18f16d0655fec282cad06f59168a5fca8f09bf7fce1f547"
+    },
+    "experiments/2026-10-07-stack-blocks-rgbd/xpolicylab-act-repaired.patch": {
+      "bytes": 65134,
+      "sha256": "869b6aa18fb4a00a144802980a8966a69ae848ab336c4b9faa8106a0bfdcc45a"
+    },
+    "experiments/2026-10-08-policy-comparison/ACT_ABLATION.md": {
+      "bytes": 4452,
+      "sha256": "f9c5c59c31ef6f4a7eb632f96e34969fa3878823ea392fdc12cbbd3d05bf007c"
+    },
+    "experiments/2026-10-08-policy-comparison/DP_FAILURE_DIAGNOSIS.md": {
+      "bytes": 8706,
+      "sha256": "61d4367f1861be088a9a839b40a44e71b7d735639cb1aabf0ba45181fc46af22"
+    },
+    "experiments/2026-10-08-policy-comparison/FOUR_WAY_COMPARISON.md": {
+      "bytes": 3793,
+      "sha256": "149af409971b1ec834c022f81fa066bebefc53c3047ac8619809db619c579ff1"
+    },
+    "experiments/2026-10-08-policy-comparison/PURE_COMPARISON.md": {
+      "bytes": 3223,
+      "sha256": "138319ddf62d3d60050bbeec71cca1f26fdaa4ebce6ead4432a4e5530a37e112"
+    },
+    "experiments/2026-10-08-policy-comparison/README.md": {
+      "bytes": 5626,
+      "sha256": "fea249190b95389d8964250f4dd48ce1b767d5298ca5cbdf73fb009e5562ebf8"
+    },
+    "experiments/2026-10-08-policy-comparison/ablation-completion.json": {
+      "bytes": 6612,
+      "sha256": "4b4d7da9720ce52990c9b63524e71f1b7e39d5900a14a18f3142050bcc2ee50f"
+    },
+    "experiments/2026-10-08-policy-comparison/ablation-protocol.json": {
+      "bytes": 5522,
+      "sha256": "17cf0a367abf07275088e6b46bf55d0344a06a7dcd553e106b2d982ba1db2538"
+    },
+    "experiments/2026-10-08-policy-comparison/ablation-results.json": {
+      "bytes": 109461,
+      "sha256": "9743aa3c354c672f634be55595d02d1f6a5098181206ecab7d20efff24c6700f"
+    },
+    "experiments/2026-10-08-policy-comparison/camera-and-task.yml": {
+      "bytes": 916,
+      "sha256": "40ca6f64271d9784212c760147a04ba25467683cb18c9acbdf4e457b80fd757c"
+    },
+    "experiments/2026-10-08-policy-comparison/collection-manifest.json": {
+      "bytes": 456857,
+      "sha256": "ed3b9629a982f2d727240b9887188facf1deb5aab04169dc58b61c252a2a91c5"
+    },
+    "experiments/2026-10-08-policy-comparison/dataset-audit.json": {
+      "bytes": 17589,
+      "sha256": "f2dcbae20f8c665c889406ef17415c326c4802db7a3c2b40e647b13ebbbb60dd"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-config.json": {
+      "bytes": 617,
+      "sha256": "41ec152d66253414a235b2f0abec661b359941be84a2020ea25cd6057789cb5e"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-data-audit.json": {
+      "bytes": 66988,
+      "sha256": "60b4f6ee2d6f97f2ada76fe512ece7f65b5de13c1fb7a609efbbcd813d3dd280"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnosis-analysis.json": {
+      "bytes": 10067,
+      "sha256": "2c47d5c5eecae2738cfea7664ac82c30fa1e1961a67581cd1ba326c3a32614e6"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnosis-completion.json": {
+      "bytes": 64,
+      "sha256": "7414fdea84d99df7bfd90588064d0172f2b86381f0a74bd45445852ae0be7a3c"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnosis-manifest.json": {
+      "bytes": 1742,
+      "sha256": "e6cdc23a054787d6966e056fb06ca0513a26bbdd06ec88bc4add2be7a56486f9"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnosis-verification.json": {
+      "bytes": 377,
+      "sha256": "bef2e797296a98fe76b1c4057ab2dc31f41f653037d57e7aadde01c07f18818e"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnostic-rollout.json": {
+      "bytes": 897,
+      "sha256": "59392d240e2d54b70125e18f4a02b21f70f2b278a2c58963ed3df3a034e47a80"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-diagnostic-trace.jsonl": {
+      "bytes": 411002,
+      "sha256": "7f0f710f1fd83a91516a3a5b740fd07e8843a0bcbea6d8fb10409066a526afbb"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-execution-response.jsonl": {
+      "bytes": 1469443,
+      "sha256": "ea0cfafd4697012a27c32c2475efc0bc70b0a285ab03cd0ccc5225ad095e9f8b"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-experiment.json": {
+      "bytes": 27086,
+      "sha256": "ced29a0bfcce5645e936b8596a0c76f65ced1f68c74b12e815ed885e136898b4"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-expert-points.jsonl": {
+      "bytes": 604173,
+      "sha256": "b930f65b47819ac55c730f682ca66dea538c4f622d293a182751428dc88130f4"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-expert-prediction-results.json": {
+      "bytes": 67886,
+      "sha256": "ca862b1fc76f4fa3b380132b88d371d721f1e8acd7fa2010d34e7b3b2779167e"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-expert-predictions.npz": {
+      "bytes": 436626,
+      "sha256": "76b42b823f4de917953836cb1b0d6f621827130f17602f9bff0bce808a71987e"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-preflight.json": {
+      "bytes": 805,
+      "sha256": "5f5f23abf9b3423887485fa33696e1f21ad70b2cf033409a5a568ded277faad1"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-training-completion.json": {
+      "bytes": 325,
+      "sha256": "252cd915d2bde9443cfab6825486d245af2dfc459ab125ce5adf7f5a71b69066"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-training-metrics.jsonl": {
+      "bytes": 467547,
+      "sha256": "d9da7bcf2576127156dd95d631b58c897d1e79e5b12b42ad0ff17b77e6bd6772"
+    },
+    "experiments/2026-10-08-policy-comparison/dp-workflow.patch": {
+      "bytes": 142930,
+      "sha256": "5fc0d5fad20c9f11dd92dae5c065179a145d0bfb53cf9826ec9a885b9ea4df24"
+    },
+    "experiments/2026-10-08-policy-comparison/export-verification.json": {
+      "bytes": 1907,
+      "sha256": "0625dc715fd7f032db57b45f336208af0050783d8309a440ba6764f376174e08"
+    },
+    "experiments/2026-10-08-policy-comparison/four-way-results.json": {
+      "bytes": 111684,
+      "sha256": "e5144390fc375cd8218337439f7762d6e22428abc9eeb2f07d35e5b9021472a0"
+    },
+    "experiments/2026-10-08-policy-comparison/local-artifact-inventory.json": {
+      "bytes": 161693,
+      "sha256": "00ba2c2d275525c233f6f286b1dd9916d3027ed7637dbe3a92d3771eb2f60736"
+    },
+    "experiments/2026-10-08-policy-comparison/paired-results.csv": {
+      "bytes": 5266,
+      "sha256": "5ccae07adb77bc8da832fdc8de0831375b0a6da332fa7514bfda47b638cc9be3"
+    },
+    "experiments/2026-10-08-policy-comparison/source-snapshot.json": {
+      "bytes": 4086,
+      "sha256": "4daab712234edf4c80ab82a8eeea7b65f9518e458804c4c82b56c227512b0ec9"
+    },
+    "experiments/2026-10-08-policy-comparison/split-40-10.json": {
+      "bytes": 873,
+      "sha256": "e377e9d10cf02a6f331304752695e4ca3918f4941c362ab0487e348e1c0126f6"
+    },
+    "experiments/2026-10-08-policy-comparison/weights-registry.json": {
+      "bytes": 881,
+      "sha256": "e4419b5c1d4db33ca311d3cba971bbca5e5153a38a687871ecba2039d61bc959"
+    },
+    "patches/0001-configurable-ray-tracing-denoiser.patch": {
+      "bytes": 1233,
+      "sha256": "429756bca405f3d5919f563dc039a8b5f1121ad5252e7281a42f2fcb3e2eb47a"
+    },
+    "patches/README.md": {
+      "bytes": 398,
+      "sha256": "b5d5de08c9a20f22f0abd48bcc87251fade37f45a85cbf8074ec03ce1e352c9a"
+    },
+    "results/README.md": {
+      "bytes": 397,
+      "sha256": "df8342b7fc7a75687f9027f6e3f13ae4a061773c6b29e1753bf253737edf816c"
+    },
+    "results/figures/.gitkeep": {
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    "results/short_videos/README.md": {
+      "bytes": 1077,
+      "sha256": "9e346f7dd7e0f3caa40fe5c799f650c90f38325253b4c9bc9ef93864514e54fc"
+    },
+    "results/short_videos/expert-episode0-preview.mp4": {
+      "bytes": 188467,
+      "sha256": "a037c881b5a00f5579de40bdd2da8b98804542a8c5585b13d0be492018d21df1"
+    },
+    "results/short_videos/historical-act-rgbd-seed700000.mp4": {
+      "bytes": 339625,
+      "sha256": "2f5ee175e3a9ac28a3fd18740c6d11dd0cce2b2a8a14845b8b9dd3cfc66ea558"
+    },
+    "results/short_videos/media-provenance.json": {
+      "bytes": 1177,
+      "sha256": "ef3d0cb825a0a94c256d8d560d2fffe0fccead1d8cad66674c586c60b229d1f6"
+    },
+    "results/summary.csv": {
+      "bytes": 1090,
+      "sha256": "d1ea8717711162578d5db8a297cc6e82ab20f3957d9de7430b9237883b1968e4"
+    },
+    "scripts/README.md": {
+      "bytes": 424,
+      "sha256": "7af2f55280f18f79027479fd72e0bbf4710e89df10a79aec5015fa9bb3c58041"
+    },
+    "scripts/restore_materials.py": {
+      "bytes": 3213,
+      "sha256": "6f3bb23816ceea20fd8eaf5c8e6855b1ae1899cb1987fbacc4270e7524db90a3"
+    },
+    "scripts/verify_materials.py": {
+      "bytes": 3531,
+      "sha256": "8c4e899d8710ebaef65efc919a7fa9cba3ee783425a7dc833ca1e34c2c8f6da9"
+    },
+    "templates/experiment/README.md": {
+      "bytes": 663,
+      "sha256": "e10ce9a4c3fe2408a41231726b1c513a37399d881272728bd62adca638d59716"
+    },
+    "upstream.lock.yml": {
+      "bytes": 453,
+      "sha256": "a29c3c17d5b4414026cac0498f0da9472454edcb52751b3b0a1651a41d774095"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "train_episode_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    37,
+    39,
+    40,
+    41,
+    42,
+    44,
+    45,
+    46,
+    47,
+    49
+  ],
+  "validation_episode_ids": [
+    5,
+    8,
+    11,
+    12,
+    21,
+    31,
+    36,
+    38,
+    43,
+    48
+  ],
+  "selection_seed": 42,
+  "counts": {
+    "train": {
+      "LL": 10,
+      "RL": 10,
+      "LR": 10,
+      "RR": 10
+    },
+    "validation": {
+      "LR": 2,
+      "RL": 2,
+      "RR": 3,
+      "LL": 3
+    }
+  },
+  "original_split_preserved": true,
+  "note": "Original train/validation memberships preserved. Added validation episodes sampled only from new LL/RR expert successes, independent of policy performance."
+}

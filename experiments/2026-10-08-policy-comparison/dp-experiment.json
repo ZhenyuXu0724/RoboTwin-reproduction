@@ -1,0 +1,477 @@
+{
+  "phase": "completed",
+  "created_at": "2026-10-07T11:40:22.173915+08:00",
+  "pipeline_pid": 386773,
+  "config": {
+    "horizon": 16,
+    "n_obs_steps": 2,
+    "n_action_steps": 8,
+    "diffusion_train_steps": 100,
+    "diffusion_inference_steps": 100,
+    "down_dims": [
+      256,
+      512,
+      1024
+    ],
+    "image_shape": [
+      3,
+      480,
+      640
+    ],
+    "action_dim": 14,
+    "seed": 0,
+    "epochs": 2000,
+    "updates_per_epoch": 40,
+    "batch_size": 1,
+    "lr": 0.0001,
+    "weight_decay": 1e-06,
+    "critical_sampling_ratio": 0.5,
+    "pretrained_resnet": "IMAGENET1K_V1",
+    "precision": "bfloat16 autocast; FP32 parameters",
+    "ema": true,
+    "rgbd_guard": false,
+    "depth_input": false,
+    "normalization": "train-only min/max; DP native noise MSE"
+  },
+  "train_episode_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    9,
+    10,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    37,
+    39,
+    40,
+    41,
+    42,
+    44,
+    45,
+    46,
+    47,
+    49
+  ],
+  "validation_episode_ids": [
+    5,
+    8,
+    11,
+    12,
+    21,
+    31,
+    36,
+    38,
+    43,
+    48
+  ],
+  "split_sha256": "e377e9d10cf02a6f331304752695e4ca3918f4941c362ab0487e348e1c0126f6",
+  "critical_samples_sha256": "6ce57fd24edf1fb473d6cac805d26c137f57aa2a6c3a7bd65e5a9a588f6370a4",
+  "act_checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+  "act_checkpoint_sha256": "e242a25826d8ace1d41999c6bf04b695e9a60027a31d6fbbdde897a6dd662542",
+  "dataset_files": {
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_0.hdf5": {
+      "bytes": 848834128,
+      "mtime_ns": 1791255581267215282
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_1.hdf5": {
+      "bytes": 909662192,
+      "mtime_ns": 1791255642332512494
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_10.hdf5": {
+      "bytes": 915192016,
+      "mtime_ns": 1791256310580028775
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_11.hdf5": {
+      "bytes": 904132368,
+      "mtime_ns": 1791256381540439980
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_12.hdf5": {
+      "bytes": 862658688,
+      "mtime_ns": 1791256452482106325
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_13.hdf5": {
+      "bytes": 915192016,
+      "mtime_ns": 1791256523449713903
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_14.hdf5": {
+      "bytes": 887542896,
+      "mtime_ns": 1791256594361076062
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_15.hdf5": {
+      "bytes": 843304304,
+      "mtime_ns": 1791256665160325034
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_16.hdf5": {
+      "bytes": 829479744,
+      "mtime_ns": 1791256735936719703
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_17.hdf5": {
+      "bytes": 859893776,
+      "mtime_ns": 1791256806824242194
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_18.hdf5": {
+      "bytes": 862658688,
+      "mtime_ns": 1791256887747973299
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_19.hdf5": {
+      "bytes": 840539392,
+      "mtime_ns": 1791256958515714412
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_2.hdf5": {
+      "bytes": 865423600,
+      "mtime_ns": 1791255713183197069
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_20.hdf5": {
+      "bytes": 868188512,
+      "mtime_ns": 1791257029297537801
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_21.hdf5": {
+      "bytes": 882013072,
+      "mtime_ns": 1791257100136433472
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_22.hdf5": {
+      "bytes": 895837632,
+      "mtime_ns": 1791257170999391854
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_23.hdf5": {
+      "bytes": 884777984,
+      "mtime_ns": 1791257241816230326
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_24.hdf5": {
+      "bytes": 846069216,
+      "mtime_ns": 1791257312706464345
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_25.hdf5": {
+      "bytes": 901367456,
+      "mtime_ns": 1791257393563723896
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_26.hdf5": {
+      "bytes": 884777984,
+      "mtime_ns": 1791257464412865442
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_27.hdf5": {
+      "bytes": 868188512,
+      "mtime_ns": 1791257535201036569
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_28.hdf5": {
+      "bytes": 826714832,
+      "mtime_ns": 1791257606008234628
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_29.hdf5": {
+      "bytes": 846069216,
+      "mtime_ns": 1791257676805455701
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_3.hdf5": {
+      "bytes": 865423600,
+      "mtime_ns": 1791255804154394647
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_30.hdf5": {
+      "bytes": 848834128,
+      "mtime_ns": 1791257747652697832
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_31.hdf5": {
+      "bytes": 846069216,
+      "mtime_ns": 1791257818454956767
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_32.hdf5": {
+      "bytes": 887542896,
+      "mtime_ns": 1791257889242230735
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_33.hdf5": {
+      "bytes": 821185008,
+      "mtime_ns": 1791257960026517972
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_34.hdf5": {
+      "bytes": 859893776,
+      "mtime_ns": 1791258030824817039
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_35.hdf5": {
+      "bytes": 815655184,
+      "mtime_ns": 1791258101604296507
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_36.hdf5": {
+      "bytes": 882013072,
+      "mtime_ns": 1791258172417436468
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_37.hdf5": {
+      "bytes": 873718336,
+      "mtime_ns": 1791258243240760259
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_38.hdf5": {
+      "bytes": 906897280,
+      "mtime_ns": 1791258324066111790
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_39.hdf5": {
+      "bytes": 851599040,
+      "mtime_ns": 1791258394874484682
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_4.hdf5": {
+      "bytes": 879248160,
+      "mtime_ns": 1791255875059130672
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_40.hdf5": {
+      "bytes": 876483248,
+      "mtime_ns": 1791258465674625110
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_41.hdf5": {
+      "bytes": 904132368,
+      "mtime_ns": 1791258536578425984
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_42.hdf5": {
+      "bytes": 898602544,
+      "mtime_ns": 1791258607483809647
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_43.hdf5": {
+      "bytes": 837774480,
+      "mtime_ns": 1791258678277706853
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_44.hdf5": {
+      "bytes": 870953424,
+      "mtime_ns": 1791258749086043814
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_45.hdf5": {
+      "bytes": 906897280,
+      "mtime_ns": 1791258819915763514
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_46.hdf5": {
+      "bytes": 832244656,
+      "mtime_ns": 1791258890701819203
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_47.hdf5": {
+      "bytes": 823949920,
+      "mtime_ns": 1791258961471166177
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_48.hdf5": {
+      "bytes": 854363952,
+      "mtime_ns": 1791259032324763441
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_49.hdf5": {
+      "bytes": 882013072,
+      "mtime_ns": 1791259103160941531
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_5.hdf5": {
+      "bytes": 884777984,
+      "mtime_ns": 1791255945913694488
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_6.hdf5": {
+      "bytes": 832244656,
+      "mtime_ns": 1791256016825109326
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_7.hdf5": {
+      "bytes": 906897280,
+      "mtime_ns": 1791256087733993977
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_8.hdf5": {
+      "bytes": 870953424,
+      "mtime_ns": 1791256158676330343
+    },
+    "XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint/episode_9.hdf5": {
+      "bytes": 815655184,
+      "mtime_ns": 1791256229625060792
+    }
+  },
+  "development_seeds": [
+    200000,
+    300000,
+    400000,
+    500000,
+    600000
+  ],
+  "fresh_test_seeds": [
+    2700000,
+    2800000,
+    2900000,
+    3000000,
+    3100000,
+    3200000,
+    3300000,
+    3400000,
+    3500000,
+    3600000,
+    3700000,
+    3800000,
+    3900000,
+    4000000,
+    4100000,
+    4200000,
+    4300000,
+    4400000,
+    4500000,
+    4600000
+  ],
+  "steps_limit": 800,
+  "tuning_during_evaluation": false,
+  "source_hashes": {
+    "scripts/dp_comparison/train.py": "6d59fbb8b10073e61211eb42cd748ca4e0a8c4d4beaf7f2fcf485f01d901c37a",
+    "scripts/dp_comparison/evaluate.py": "aede24fe77c4bfcf24941edb581d4df4e3a9dd64f93e479cf4395c55773526d1",
+    "scripts/dp_comparison/test_contracts.py": "80e34377eaa55a919ac248b7c254c2abcfab7775bb81e4a43b2a372e7e869cd2",
+    "scripts/dp_comparison/common.py": "53241d59612b284c13e44bfb9cb109b0b03c31fafdc33f955394ebd335f66da3",
+    "scripts/dp_comparison/launch.py": "3d4a0ddf660ce77507d0e7c1e466445328fc965ca7b328b025bbba7d18848ba1",
+    "scripts/dp_comparison/pipeline.py": "d7eb00de880934857cabf148d54b65c117715a9076109d87fc53fba4f1f22551",
+    "XPolicyLab/policy/DP/diffusion_policy/process_data.py": "ad39f770def1b305860e040c14489e6be7e30a7cfc405fe66640a6d11caf0789",
+    "XPolicyLab/policy/DP/diffusion_policy/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "XPolicyLab/policy/DP/diffusion_policy/env_runner/dp_runner.py": "aba2e5f21bc48d64cb90e8aa3f59c5bce7ff57eadd30289dd29e7cc3dbaf1e27",
+    "XPolicyLab/policy/DP/diffusion_policy/policy/diffusion_unet_image_policy.py": "d5a50e36b6e57eb52267e8c35f87c8451ce74b66f043cf723198246a19b65181",
+    "XPolicyLab/policy/DP/diffusion_policy/policy/base_image_policy.py": "3765eda42f717caabf5d488e0e456adbc82133f516747163b4de4194102e8512",
+    "XPolicyLab/policy/DP/diffusion_policy/workspace/base_workspace.py": "9e0a457e7d2c90409b7bec3723b61640e40a8f83a89b8eefd0652fa3602418ef",
+    "XPolicyLab/policy/DP/diffusion_policy/workspace/robotworkspace.py": "265307f01e353e84cadfe7981541809c6a7fb99cf0c19ddf3fb02c8fe2a0b5a0",
+    "XPolicyLab/policy/DP/diffusion_policy/model/vision/crop_randomizer.py": "ea7ca0e4ce7192b89d0ce70a6f0c056084480ac24b08063a8e5b191d4b1a247a",
+    "XPolicyLab/policy/DP/diffusion_policy/model/vision/multi_image_obs_encoder.py": "68c446d507b29707153ef9a17342c399e3595321f83a23289a65e0d8a37e0f15",
+    "XPolicyLab/policy/DP/diffusion_policy/model/vision/model_getter.py": "07615235ef9675c47549712eb7d3f6764d6f9dad30c543f86c5a82ca322b0638",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/utils.py": "3b5c34ecbf6bb54182199811771eeb35dee2712e68fe90d5ba1c5c107e28c2fa",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/action_ae/__init__.py": "e90b80222484c9d8602ee2e0d49a20c744d5e102da6ac95ba93358562ca1df0b",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/action_ae/discretizers/k_means.py": "0cfa8991f05c29f73536b8cb8ba1ce8a5141df8ffdb59be869a46cf0cf301b5a",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/libraries/loss_fn.py": "ac1a796e62fae864f78cfae9780dac510460f4c33bf2732c5dc508fdca4029b4",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/libraries/mingpt/model.py": "e85b9ad8c098cdae2b81fc09e835cf4a217c5e6f1cf8e265b10beaa34f739f34",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/libraries/mingpt/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/libraries/mingpt/trainer.py": "397620fbdb3b2c0e4bf021c5a6d0889d7c8d69e139d9fa091d584c2e6da56bc9",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/libraries/mingpt/utils.py": "c875b0a8615564b768bccd674fba3d1a9faa8524cdc0640bf2dfc6c4b30d314e",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/latent_generators/transformer.py": "0873c819f7dd26a858944345eebe8a11c7eb82f4fb3835595e53d1d600cd1072",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/latent_generators/mingpt.py": "c50a2b5f414dc1f4bf756d41c9c5e30237fb216a7f97505bb48c486e9946a45e",
+    "XPolicyLab/policy/DP/diffusion_policy/model/bet/latent_generators/latent_generator.py": "a92d651b1aee0bd6301ed4f138ae04faa3cbabbac5d874d6352b3254fe798315",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/conditional_unet1d.py": "332a392e168ae4642ab197f1934bc2cf5c10010b994f9b2ed9975b90ee0f8c67",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/transformer_for_diffusion.py": "76f9ea5ead2ca166a9868167ea49fbce018eb924960e05892eba2976b4945b03",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/mask_generator.py": "d646443f3f2e3379d1e7b535605466248a851a86836136934deb75c1356614e5",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/ema_model.py": "c6f1ae757bb2b10e5d20d5875d9c8c7a1c620aa4ecea6424a87b4b1bea76bd1a",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/positional_embedding.py": "87eaca54c0037e6084c6401425e9548b141366be3e5ab1544a6fdd24ae7d4e59",
+    "XPolicyLab/policy/DP/diffusion_policy/model/diffusion/conv1d_components.py": "4342ecb9391ffd053aadf38d4c833b5a7d68b79b442572fd1d786c07f1a9f12e",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/dict_of_tensor_mixin.py": "ff3be833276dda9d395f6204aec6769f30317a68c8634ab37d7f375e274be1f0",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/normalizer.py": "6360c630fbe134dd7b311d279977104212c68b5987e54134fdfe64fc9cba0ae8",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/shape_util.py": "9751d6dc7342877a455a36fbccb4df6fb515cdb3b5ecbd2873e6d5c8fc876d3a",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/tensor_util.py": "3a00f0a6bada6490944f31502cfa3ed515515b91145d1d4146f11c4eb0e510dd",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/rotation_transformer.py": "af505851e7a530bda4f596801f5e44ae075846b2667d6c93148314d9a2cc044d",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/module_attr_mixin.py": "37bb26e0ac9bcba6161dba613929d9d3f475f2bba683885fcb49df323d6dade7",
+    "XPolicyLab/policy/DP/diffusion_policy/model/common/lr_scheduler.py": "3e91c244c0be4a4d758388e6db5882b9d616467239f5eef99a2d2d0e2a5636eb",
+    "XPolicyLab/policy/DP/diffusion_policy/shared_memory/shared_ndarray.py": "11f4a2dbb9b3722d36419b617b585d155ff5c55e8c15bb775d8f5c45de78bca6",
+    "XPolicyLab/policy/DP/diffusion_policy/shared_memory/shared_memory_queue.py": "3409e41508f14718ab73ca6d26c854fda533228e2262be6c7aa7e51628e0a651",
+    "XPolicyLab/policy/DP/diffusion_policy/shared_memory/shared_memory_util.py": "4683afe1d810c25e941d75a2dc121e73353c422bfd41c105fc5f5ab3bb75efa7",
+    "XPolicyLab/policy/DP/diffusion_policy/shared_memory/shared_memory_ring_buffer.py": "c5f8d45da42b2581a6220a2f5efead87756d4785bb3b1ccd78e13846d85b29c6",
+    "XPolicyLab/policy/DP/diffusion_policy/common/nested_dict_util.py": "4aa208dbcc298489854678b88b06e18b672dd776670e67ba65305e9158a6e1eb",
+    "XPolicyLab/policy/DP/diffusion_policy/common/sampler.py": "879bfab2bf068816d3952c814325c8fd989dabc9fa688ce7f859c9234b3f3b2f",
+    "XPolicyLab/policy/DP/diffusion_policy/common/precise_sleep.py": "b82bd5ed3d5a116aa0097a2a16b0db35fa5e1bce38fc5a2ea37fe2b322f2e8d3",
+    "XPolicyLab/policy/DP/diffusion_policy/common/pytorch_util.py": "ce68ea9aa3eaad156364ff58ed842026406c00e07ed9b632445d3b5c6f8620a9",
+    "XPolicyLab/policy/DP/diffusion_policy/common/pymunk_override.py": "92c8059f9d8fb551193ccf135272318ab43d796cf8a8af3492156fcb297b4740",
+    "XPolicyLab/policy/DP/diffusion_policy/common/robomimic_config_util.py": "d7424c5e1931b24ecc4acbd869b4771dce91eb844f83d8ca093bda91bd68fb3c",
+    "XPolicyLab/policy/DP/diffusion_policy/common/checkpoint_util.py": "41bc1e81aa2f988eb0aaf134baea592e5c7fa9486330b2db85307de91cf48a77",
+    "XPolicyLab/policy/DP/diffusion_policy/common/cv2_util.py": "c26440ec98788d7bcb9a839573a0eb2c6e6fe2395acc240b62e71f95365168bd",
+    "XPolicyLab/policy/DP/diffusion_policy/common/normalize_util.py": "78376a000e4ac189df9777250b27a7559255647ba407d16f8a8a8e7e96aca55e",
+    "XPolicyLab/policy/DP/diffusion_policy/common/pose_trajectory_interpolator.py": "feedb5130eb3267198957cf5ff2507c76ec0f48196944cac34ca2a46426104e7",
+    "XPolicyLab/policy/DP/diffusion_policy/common/env_util.py": "2ac6e9b690b38ef5c9671dd1b238955857f803e8d623cc32b1fb28e236c472fe",
+    "XPolicyLab/policy/DP/diffusion_policy/common/pymunk_util.py": "3190b005acd101408e7226b658077a5f27772d6b59f1fe8b642ee527b160e054",
+    "XPolicyLab/policy/DP/diffusion_policy/common/timestamp_accumulator.py": "d568552511c1b3ef158ec6146acfad1e1e187357daaca35ed6688752ee5c8eb8",
+    "XPolicyLab/policy/DP/diffusion_policy/common/json_logger.py": "ca6884937e1e6f5c7a7afa079f413bf1137178e1a6627ec152c2cae792dbd4c7",
+    "XPolicyLab/policy/DP/diffusion_policy/common/robomimic_util.py": "7862574196c70f71cb64a64906c6e87ec56ce1beaee80a405e70222decab5d80",
+    "XPolicyLab/policy/DP/diffusion_policy/common/replay_buffer.py": "11ba406b5bd88fa05680072e70ea414a61d7788295741a0efadb6d49873523da",
+    "XPolicyLab/policy/DP/diffusion_policy/dataset/base_dataset.py": "7cd18962090681d6f8ccf2e16e90ce4217335bb16d2ef10badfc29a21ab028ab",
+    "XPolicyLab/policy/DP/diffusion_policy/dataset/robot_image_dataset.py": "553ad12c02744de6eda6ea9cdb71f88013525c63b3600369ca4d7a747163b243",
+    "XPolicyLab/policy/ACT/constants.py": "16e81bcf7de8d2b6b81f8bdaa2733b04618569a2524202fb30c1d4f8a4026ed3",
+    "XPolicyLab/policy/ACT/model.py": "3da0a2662ab266de713e7b750e904ac0b97de5b3ae6018299deec5b14782d41d",
+    "XPolicyLab/policy/ACT/__init__.py": "74dcd563e3bf888034430f8dd4d83c73df61d60d03a69a1475b3484a293cf5b2",
+    "XPolicyLab/policy/ACT/imitate_episodes.py": "207c1f49d226901515604462af9d0df356141aee8cdf5e82ed7de761271bdb32",
+    "XPolicyLab/policy/ACT/losses.py": "6276e3d9cd3e805e02f5ee7d1aa083d4413c1984d5e0d056055b16ce927f3045",
+    "XPolicyLab/policy/ACT/utils.py": "afa9c8d0b3c0a89030768b2bf70697084b52bff8b86ad5693a02bfb0670edfb5",
+    "XPolicyLab/policy/ACT/deploy.py": "5dfdcc3eb24ee1703745446dfbbba59beedfec4f176549103a2b9ae916fdbd7c",
+    "XPolicyLab/policy/ACT/tests/test_repaired_training.py": "ef494412c8cbb0acca07d169c0e19048f19c02cf49b125456db2a33871f47a59",
+    "XPolicyLab/policy/ACT/tests/test_training_artifacts.py": "256665cbdc0b9cd0f9b45b8b143952fbafb0f410f1835ea21693d10b3d7e4b2b",
+    "XPolicyLab/policy/ACT/tests/test_data_loading.py": "e1ddc0f6e25980db0ae050b75d7902dec5d5d91c53d79c4653267394f9aa3c3e",
+    "XPolicyLab/policy/ACT/detr/act_policy.py": "694668a294b3f4f207b1bc0cf4b0896104fe83b735cae9ea43692bfd8e0fa4d3",
+    "XPolicyLab/policy/ACT/detr/process_data.py": "d4cba1adc6038ea5f9766f1499086131ba5b333e9301d2879304a6e825c7f540",
+    "XPolicyLab/policy/ACT/detr/setup.py": "9a44d0125d73963ca219fd16cb511426b5fa2dfb7a499b7d9f08422ab822ccfe",
+    "XPolicyLab/policy/ACT/detr/main.py": "af354debe59cb7304328cd41218cefd1b8032a4f5e48df26f96e4a3d7f581169",
+    "XPolicyLab/policy/ACT/detr/models/position_encoding.py": "12578dbadbaea2d8252c43f818b5826b1cf141feb8df1de2a012da81138080e4",
+    "XPolicyLab/policy/ACT/detr/models/transformer.py": "837506820a3c564896d9d694681b9a803c14e6ec30081ec9336f493158c06f4b",
+    "XPolicyLab/policy/ACT/detr/models/detr_vae.py": "90c02fc295197c1a8fc5732dcae330ebe876507075a25cbb66ddadbcb7ef2b9b",
+    "XPolicyLab/policy/ACT/detr/models/__init__.py": "3c09396628dc91ed32b59beeedb4f818fbd7bf3e5154b728513063ecdc0ac1c5",
+    "XPolicyLab/policy/ACT/detr/models/backbone.py": "476d954304220c4d34fa9eb725ea2eaa54da72be452e8a645e19989f95880aee",
+    "XPolicyLab/policy/ACT/detr/util/box_ops.py": "4c28aba49a4bb3ff18385e4940ad8ca7ad788aa4cfb03b075d15d9b4294d6aa6",
+    "XPolicyLab/policy/ACT/detr/util/plot_utils.py": "e8d46523fbf7aca10c2911be55441685e0cd1a6f4faa7382fcefb62c06b3bdca",
+    "XPolicyLab/policy/ACT/detr/util/misc.py": "f9210613ef5d7477c01ad1cc6946c36a0221102cf6159ad7c261dd20b8feb374",
+    "XPolicyLab/policy/ACT/detr/util/__init__.py": "9e535c45af09ac24ef8d5631a151f77febafe72a92ad6bfeb2d941f0c4a54e35",
+    "envs/camera/camera.py": "fb8eb30693c08212ba0a4e0d3d966f8b4ea95feef615e678dcb730a43b4ea62d",
+    "envs/_base_task.py": "b2401c3dd0f4d01ac983cfdfcf3ded86aa1f47a3183a6fc0cca002a10e1bf0c1",
+    "envs/stack_blocks_two.py": "4e92a679cb5be4ef87a1b842432c930560a2c9b539a4cbcee0161e2b2112f526",
+    "scripts/eval_policy_xpolicylab.py": "5d6a189fe00970dc3b3041c0599d06b419e6479f7e6912d41c9bcce82ea33227",
+    "env_cfg/task_config/demo_train50_wrist_v2.yml": "40ca6f64271d9784212c760147a04ba25467683cb18c9acbdf4e457b80fd757c",
+    "data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/evaluation50/serial_camera.py": "9bb3babe98128061705873ee04b3903b21167aed556a7f131a82df45617dfe59",
+    "data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/act_eval_config.yml": "b5f728e382b791ec1faee1e519a59e98dc634da73f644919ebc2480840390606"
+  },
+  "comparison_note": "Same demos/split/RGB resolution/state/80k updates. Native architectures, horizons, losses, normalization and precision differ. Not a controlled architecture-only ablation.",
+  "runtime": {
+    "python": "3.10.21 (main, Aug 27 2026, 14:42:07) [GCC 14.3.0]",
+    "torch": "2.7.1+cu128",
+    "diffusers": "0.32.2",
+    "numpy": "1.26.4",
+    "gpu": "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "cuda": "12.8"
+  },
+  "updated_at": "2026-10-07T23:28:06.458327+08:00",
+  "training_complete": true,
+  "checkpoint_sha256": "67dc045e12f46e7a3516037877612a0e9482d04c4fa9b8c7063c34c8646c75a8",
+  "completed_cases": 50,
+  "latest_case": {
+    "policy": "ACT",
+    "seed": 2900000,
+    "success": false
+  },
+  "failed_stage": "evaluation",
+  "error": "Command '['${USER_HOME}/anaconda3/envs/RoboTwin/bin/python', '-u', '${ROBOTWIN_ROOT}/scripts/dp_comparison/evaluate.py', '--policy', 'DP', '--seed', '2900000', '--steps', '800', '--output', '${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed2900000', '--checkpoint', '${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/training/2000.pt']' died with <Signals.SIGSEGV: 11>.",
+  "traceback": "Traceback (most recent call last):\n  File \"${ROBOTWIN_ROOT}/scripts/dp_comparison/pipeline.py\", line 71, in main\n    run([scripts/'evaluate.py','--policy',policy,'--seed',seed,'--steps',800,'--output',case,\n  File \"${ROBOTWIN_ROOT}/scripts/dp_comparison/pipeline.py\", line 47, in run\n    subprocess.run([sys.executable, '-u', *map(str,command)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=24*3600)\n  File \"${USER_HOME}/anaconda3/envs/RoboTwin/lib/python3.10/subprocess.py\", line 526, in run\n    raise CalledProcessError(retcode, process.args,\nsubprocess.CalledProcessError: Command '['${USER_HOME}/anaconda3/envs/RoboTwin/bin/python', '-u', '${ROBOTWIN_ROOT}/scripts/dp_comparison/evaluate.py', '--policy', 'DP', '--seed', '2900000', '--steps', '800', '--output', '${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed2900000', '--checkpoint', '${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/training/2000.pt']' died with <Signals.SIGSEGV: 11>.\n",
+  "summaries": {
+    "development": {
+      "ACT": {
+        "valid_cases": 5,
+        "successes": 0,
+        "success_rate": 0.0,
+        "mean_steps": 800.0,
+        "mean_prediction_seconds": 0.03594834432078642
+      },
+      "DP": {
+        "valid_cases": 5,
+        "successes": 0,
+        "success_rate": 0.0,
+        "mean_steps": 800.0,
+        "mean_prediction_seconds": 0.43263032072840724
+      }
+    },
+    "fresh_test": {
+      "ACT": {
+        "valid_cases": 20,
+        "successes": 3,
+        "success_rate": 0.15,
+        "mean_steps": 744.45,
+        "mean_prediction_seconds": 0.03663292520601923
+      },
+      "DP": {
+        "valid_cases": 20,
+        "successes": 0,
+        "success_rate": 0.0,
+        "mean_steps": 800.0,
+        "mean_prediction_seconds": 0.44520986130397067
+      }
+    }
+  },
+  "evaluation_recovery": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation_resume.json"
+}
