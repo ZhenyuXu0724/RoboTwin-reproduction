@@ -35,6 +35,8 @@ RoboTwin 当前依赖基线包括：
 
 ## 每次实验需保存
 
+2026-10-08 已读取实际运行环境的版本，见 [最终材料的环境与复现入口](materials-reproduction.md)。上面的主机探测是 2026-09-30 历史记录，不能作为后续训练环境不存在的判断。
+
 ```bash
 python --version
 nvidia-smi
