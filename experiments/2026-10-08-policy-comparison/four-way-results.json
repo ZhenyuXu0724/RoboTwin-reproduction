@@ -1,0 +1,3830 @@
+{
+  "status": "completed",
+  "summaries": {
+    "ACT": {
+      "successes": 3,
+      "valid_cases": 20,
+      "success_rate": 0.15,
+      "red_sustained_lift_proxy": 10,
+      "green_sustained_lift_proxy": 7,
+      "mean_steps": 744.45,
+      "corrected_steps": 0,
+      "intervened_cases": 0,
+      "replans": 0
+    },
+    "DP": {
+      "successes": 0,
+      "valid_cases": 20,
+      "success_rate": 0.0,
+      "red_sustained_lift_proxy": 0,
+      "green_sustained_lift_proxy": 1,
+      "mean_steps": 800.0,
+      "corrected_steps": 0,
+      "intervened_cases": 0,
+      "replans": 0
+    },
+    "ACT_RGBD": {
+      "successes": 19,
+      "valid_cases": 20,
+      "success_rate": 0.95,
+      "red_sustained_lift_proxy": 19,
+      "green_sustained_lift_proxy": 19,
+      "mean_steps": 248.2,
+      "corrected_steps": 530,
+      "intervened_cases": 19,
+      "replans": 38
+    },
+    "DP_RGBD": {
+      "successes": 3,
+      "valid_cases": 20,
+      "success_rate": 0.15,
+      "red_sustained_lift_proxy": 11,
+      "green_sustained_lift_proxy": 4,
+      "mean_steps": 730.05,
+      "corrected_steps": 2000,
+      "intervened_cases": 17,
+      "replans": 15
+    }
+  },
+  "rgbd_paired_outcomes": {
+    "ACT_RGBD_1_DP_RGBD_1": 3,
+    "ACT_RGBD_1_DP_RGBD_0": 16,
+    "ACT_RGBD_0_DP_RGBD_0": 1
+  },
+  "rows": [
+    {
+      "policy": "ACT",
+      "seed": 2700000,
+      "actual_seed": 2700000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.22596409916877747,
+          -0.02004317007958889,
+          0.7650007009506226
+        ],
+        "green": [
+          0.12061168253421783,
+          -0.005880000069737434,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.0014288484817370772,
+          -0.13854575157165527,
+          0.7650007009506226
+        ],
+        "green": [
+          0.10965066403150558,
+          0.041337549686431885,
+          0.7650009393692017
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.060899555683135986,
+        "green": 0.0010759830474853516
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5979283949127421,
+      "elapsed_seconds": 169.99532087199623,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test"
+    },
+    {
+      "policy": "DP",
+      "seed": 2700000,
+      "actual_seed": 2700000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.22596409916877747,
+          -0.02004317007958889,
+          0.7650007009506226
+        ],
+        "green": [
+          0.12061168253421783,
+          -0.005880000069737434,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.26410943269729614,
+          -0.06141715869307518,
+          0.7650007009506226
+        ],
+        "green": [
+          0.10817204415798187,
+          -0.0017394530586898327,
+          0.7650009989738464
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0001602768898010254,
+        "green": 2.384185791015625e-07
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 46.76230685808696,
+      "elapsed_seconds": 213.9378533559502,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test"
+    },
+    {
+      "policy": "DP",
+      "seed": 2800000,
+      "actual_seed": 2800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.13455618917942047,
+          -0.009938106872141361,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.13455623388290405,
+          -0.009938444942235947,
+          0.7650007009506226
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 49.42205018014647,
+      "elapsed_seconds": 228.691324496991,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test"
+    },
+    {
+      "policy": "ACT",
+      "seed": 2800000,
+      "actual_seed": 2800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.13455618917942047,
+          -0.009938106872141361,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.14648562669754028,
+          -0.044845953583717346,
+          0.7650009393692017
+        ],
+        "green": [
+          -0.15605002641677856,
+          -0.06567606329917908,
+          0.7650008201599121
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.010474741458892822,
+        "green": 0.01520848274230957
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.625945272971876,
+      "elapsed_seconds": 184.47319880698342,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test"
+    },
+    {
+      "policy": "ACT",
+      "seed": 2900000,
+      "actual_seed": 2900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.15629811584949493,
+          -0.04464677721261978,
+          0.7650007605552673
+        ],
+        "green": [
+          0.17112737894058228,
+          -0.010415124706923962,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.005676322150975466,
+          -0.1720123440027237,
+          0.7650009393692017
+        ],
+        "green": [
+          -0.0014620833098888397,
+          -0.03371879458427429,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0693368911743164,
+        "green": 0.09100353717803955
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.6766575120273046,
+      "elapsed_seconds": 195.9206160660251,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test"
+    },
+    {
+      "policy": "DP",
+      "seed": 2900000,
+      "actual_seed": 2900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.15629811584949493,
+          -0.04464677721261978,
+          0.7650007605552673
+        ],
+        "green": [
+          0.17112737894058228,
+          -0.010415124706923962,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.15629811584949493,
+          -0.04464677721261978,
+          0.7650007605552673
+        ],
+        "green": [
+          0.1651359349489212,
+          -0.00880009587854147,
+          0.7650008797645569
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0006303787231445312
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.7519502278883,
+      "elapsed_seconds": 206.5202862820006,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed2900000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3000000,
+      "actual_seed": 3000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14128246903419495,
+          -0.03308303281664848,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.14128227531909943,
+          -0.03308320418000221,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.90714485064382,
+      "elapsed_seconds": 206.586558289011,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3000000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3000000,
+      "actual_seed": 3000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14128246903419495,
+          -0.03308303281664848,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.10595941543579102,
+          -0.045318786054849625,
+          0.7650007009506226
+        ],
+        "green": [
+          -0.22244253754615784,
+          -0.0016138467472046614,
+          0.7650010585784912
+        ]
+      },
+      "peak_lift_m": {
+        "red": 1.0669231414794922e-05,
+        "green": 0.006361544132232666
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.565465601044707,
+      "elapsed_seconds": 149.46139469899936,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3000000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3100000,
+      "actual_seed": 3100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.13954351842403412,
+          -0.008642643690109253,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.0015319818630814552,
+          -0.134463831782341,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.04656051844358444,
+          0.04071692377328873,
+          0.7650336027145386
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.06880789995193481,
+        "green": 0.010348677635192871
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5644082070793957,
+      "elapsed_seconds": 150.69228634797037,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3100000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3100000,
+      "actual_seed": 3100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.13954351842403412,
+          -0.008642643690109253,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1395440548658371,
+          -0.008642664179205894,
+          0.7650009989738464
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 2.384185791015625e-07
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.949156851216685,
+      "elapsed_seconds": 206.15516439202474,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3100000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3200000,
+      "actual_seed": 3200000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.2632521986961365,
+          -0.07809063047170639,
+          0.7650008201599121
+        ],
+        "green": [
+          0.17040947079658508,
+          -0.03968227282166481,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.2632523477077484,
+          -0.07809045165777206,
+          0.7650008201599121
+        ],
+        "green": [
+          0.1442854404449463,
+          -0.0655476376414299,
+          0.7650009989738464
+        ]
+      },
+      "peak_lift_m": {
+        "red": 1.7881393432617188e-07,
+        "green": 0.002602696418762207
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.8676555439597,
+      "elapsed_seconds": 206.85429012501845,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3200000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3200000,
+      "actual_seed": 3200000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.2632521986961365,
+          -0.07809063047170639,
+          0.7650008201599121
+        ],
+        "green": [
+          0.17040947079658508,
+          -0.03968227282166481,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.2860647439956665,
+          -0.09092355519533157,
+          0.7650007605552673
+        ],
+        "green": [
+          0.22618091106414795,
+          0.04760259389877319,
+          0.7650006413459778
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0005310177803039551,
+        "green": 0.0027565956115722656
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.577921487914864,
+      "elapsed_seconds": 155.0103147960035,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3200000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3300000,
+      "actual_seed": 3300000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.18117095530033112,
+          0.01173692848533392,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          0.0019340638536959887,
+          -0.13492444157600403,
+          0.7650009989738464
+        ],
+        "green": [
+          0.0019012446282431483,
+          -0.26079440116882324,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.06498175859451294,
+        "green": 0.10606646537780762
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.567848937062081,
+      "elapsed_seconds": 152.80592021800112,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3300000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3300000,
+      "actual_seed": 3300000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.18117095530033112,
+          0.01173692848533392,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1270347237586975,
+          0.040646906942129135,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0059310197830200195
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 45.01174896641169,
+      "elapsed_seconds": 206.92372296302347,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3300000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3400000,
+      "actual_seed": 3400000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.817484431143384,
+      "elapsed_seconds": 202.9562680630479,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3400000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3400000,
+      "actual_seed": 3400000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          0.003588990541175008,
+          -0.13850732147693634,
+          0.7650007009506226
+        ],
+        "green": [
+          -0.026759503409266472,
+          0.36876779794692993,
+          0.7673837542533875
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.07686042785644531,
+        "green": 0.018120765686035156
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5575381491216831,
+      "elapsed_seconds": 147.10013072600123,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3400000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3500000,
+      "actual_seed": 3500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.14979486167430878,
+          -0.07724247872829437,
+          0.7650007605552673
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          -0.13887102901935577,
+          -0.126242533326149,
+          0.7650009393692017
+        ],
+        "green": [
+          0.007612954825162888,
+          -0.11177646368741989,
+          0.7650009393692017
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.00038868188858032227,
+        "green": 0.068270742893219
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5781651409342885,
+      "elapsed_seconds": 154.33313567598816,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3500000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3500000,
+      "actual_seed": 3500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.14979486167430878,
+          -0.07724247872829437,
+          0.7650007605552673
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          -0.16598403453826904,
+          -0.07755068689584732,
+          0.7650007009506226
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "peak_lift_m": {
+        "red": 5.960464477539062e-07,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.863399788795505,
+      "elapsed_seconds": 206.4500212749699,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3500000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3600000,
+      "actual_seed": 3600000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19137372076511383,
+          0.002984551480039954,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19965723156929016,
+          0.014415095560252666,
+          0.7650009393692017
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 1.1920928955078125e-07
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 44.77291034976952,
+      "elapsed_seconds": 206.57833408901934,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3600000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3600000,
+      "actual_seed": 3600000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19137372076511383,
+          0.002984551480039954,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.17807123064994812,
+          0.01948504149913788,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.27496495842933655,
+          0.13221406936645508,
+          0.7650006413459778
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.004910945892333984,
+        "green": 0.010334193706512451
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5885713390889578,
+      "elapsed_seconds": 159.99873067898443,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3600000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3700000,
+      "actual_seed": 3700000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2574586272239685,
+          0.03356866165995598,
+          0.765000581741333
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.002407379914075136,
+          -0.1632881611585617,
+          0.7650007605552673
+        ],
+        "green": [
+          0.2769182324409485,
+          -0.09407562762498856,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.06337517499923706,
+        "green": 0.0013598799705505371
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5735172210843302,
+      "elapsed_seconds": 165.94598495902028,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3700000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3700000,
+      "actual_seed": 3700000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2574586272239685,
+          0.03356866165995598,
+          0.765000581741333
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.26960742473602295,
+          -0.03169693052768707,
+          0.7650007009506226
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.009865522384643555,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 45.73516359372297,
+      "elapsed_seconds": 208.24837347096764,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3700000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3800000,
+      "actual_seed": 3800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.15820015966892242,
+          0.042385730892419815,
+          0.7650006413459778
+        ],
+        "green": [
+          0.21565207839012146,
+          -0.040606480091810226,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.1486121416091919,
+          0.043445486575365067,
+          0.7650009393692017
+        ],
+        "green": [
+          0.22412195801734924,
+          -0.06134792044758797,
+          0.7650008201599121
+        ]
+      },
+      "peak_lift_m": {
+        "red": 2.2113323211669922e-05,
+        "green": 2.384185791015625e-07
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.00627910409821,
+      "elapsed_seconds": 184.47218716097996,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3800000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3800000,
+      "actual_seed": 3800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.15820015966892242,
+          0.042385730892419815,
+          0.7650006413459778
+        ],
+        "green": [
+          0.21565207839012146,
+          -0.040606480091810226,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.17761710286140442,
+          0.14118069410324097,
+          0.7650009393692017
+        ],
+        "green": [
+          0.21565207839012146,
+          -0.040606480091810226,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.014514029026031494,
+        "green": 0.0
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.571753905096557,
+      "elapsed_seconds": 133.07027726300294,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3800000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 3900000,
+      "actual_seed": 3900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19047610461711884,
+          0.03065343014895916,
+          0.7650009989738464
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 1.7881393432617188e-07
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5795801100321114,
+      "elapsed_seconds": 134.00730621197727,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed3900000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 3900000,
+      "actual_seed": 3900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.13911087810993195,
+          -0.03723733499646187,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.010819852352142334,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.48867562023224,
+      "elapsed_seconds": 185.80607891298132,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed3900000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4000000,
+      "actual_seed": 4000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347704708576202,
+          -0.0036805819254368544,
+          0.7650008797645569
+        ]
+      },
+      "final": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347728550434113,
+          -0.003680942114442587,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.1425262123812,
+      "elapsed_seconds": 185.5137040000409,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4000000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4000000,
+      "actual_seed": 4000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347704708576202,
+          -0.0036805819254368544,
+          0.7650008797645569
+        ]
+      },
+      "final": {
+        "red": [
+          0.13312064111232758,
+          0.030143477022647858,
+          0.7650008797645569
+        ],
+        "green": [
+          -0.17154733836650848,
+          0.011226121336221695,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.032182395458221436,
+        "green": 5.960464477539062e-07
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5748987291008234,
+      "elapsed_seconds": 136.34180499002105,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4000000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4100000,
+      "actual_seed": 4100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19712477922439575,
+          0.02345883473753929,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.0016153944889083505,
+          -0.1289343684911728,
+          0.7650008201599121
+        ],
+        "green": [
+          0.0018316074274480343,
+          -0.25104498863220215,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.06750756502151489,
+        "green": 0.10348153114318848
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5633817600901239,
+      "elapsed_seconds": 134.73811675101751,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4100000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4100000,
+      "actual_seed": 4100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19712477922439575,
+          0.02345883473753929,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.12594951689243317,
+          0.020395858213305473,
+          0.7650008797645569
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 2.562999725341797e-06,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.54792580404319,
+      "elapsed_seconds": 184.6635505069862,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4100000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4200000,
+      "actual_seed": 4200000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.26208657026290894,
+          0.04653136804699898,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15448717772960663,
+          -0.04284341633319855,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.26208657026290894,
+          0.04653136804699898,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15448717772960663,
+          -0.04284341633319855,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.28003129118588,
+      "elapsed_seconds": 185.25947445898782,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4200000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4200000,
+      "actual_seed": 4200000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.26208657026290894,
+          0.04653136804699898,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15448717772960663,
+          -0.04284341633319855,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.27865949273109436,
+          0.04551650583744049,
+          0.7650009393692017
+        ],
+        "green": [
+          -0.10337844491004944,
+          0.06135847046971321,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 2.980232238769531e-07,
+        "green": 0.014457464218139648
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5749276938149706,
+      "elapsed_seconds": 133.69416485901456,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4200000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4300000,
+      "actual_seed": 4300000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 315,
+      "initial": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.15544244647026062,
+          -0.001058395835570991,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.012670091353356838,
+          -0.14906242489814758,
+          0.7718888521194458
+        ],
+        "green": [
+          0.017228594049811363,
+          -0.12408915162086487,
+          0.8254976272583008
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.07755720615386963,
+        "green": 0.09413796663284302
+      },
+      "prediction_calls": 7,
+      "prediction_seconds": 0.28782449604477733,
+      "elapsed_seconds": 65.29738769703545,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4300000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4300000,
+      "actual_seed": 4300000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.15544244647026062,
+          -0.001058395835570991,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.14089637994766235,
+          0.005496143829077482,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 1.1920928955078125e-07
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.530786823364906,
+      "elapsed_seconds": 187.28824528300902,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4300000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4400000,
+      "actual_seed": 4400000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.23021885752677917,
+          0.008454344235360622,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          0.21378536522388458,
+          0.024535326287150383,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "peak_lift_m": {
+        "red": 1.7881393432617188e-07,
+        "green": 0.0
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.1317453548545,
+      "elapsed_seconds": 183.8604310490191,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4400000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4400000,
+      "actual_seed": 4400000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 312,
+      "initial": {
+        "red": [
+          0.23021885752677917,
+          0.008454344235360622,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.00013742274313699454,
+          -0.107375867664814,
+          0.7653496265411377
+        ],
+        "green": [
+          0.005328886676579714,
+          -0.12258182466030121,
+          0.8154666423797607
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.07848924398422241,
+        "green": 0.09875202178955078
+      },
+      "prediction_calls": 7,
+      "prediction_seconds": 0.28656968916766346,
+      "elapsed_seconds": 64.42819712200435,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4400000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4500000,
+      "actual_seed": 4500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          0.26449060440063477,
+          -0.04303636774420738,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.24218015372753143,
+          0.02716119959950447,
+          0.7650008797645569
+        ],
+        "green": [
+          0.26449060440063477,
+          -0.04303636774420738,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 8.344650268554688e-07,
+        "green": 0.0
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5647009270614944,
+      "elapsed_seconds": 134.0399655129877,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4500000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4500000,
+      "actual_seed": 4500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          0.26449060440063477,
+          -0.04303636774420738,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          -0.0004430545959621668,
+          -0.11230906844139099,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.0,
+        "green": 0.1081928014755249
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.26267704303609,
+      "elapsed_seconds": 183.3383027879754,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4500000-resume1/result.json"
+    },
+    {
+      "policy": "DP",
+      "seed": 4600000,
+      "actual_seed": 4600000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.20974484086036682,
+          -0.058550577610731125,
+          0.7650007605552673
+        ],
+        "green": [
+          0.1663074940443039,
+          -0.022099748253822327,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.20974525809288025,
+          -0.058550674468278885,
+          0.7650008797645569
+        ],
+        "green": [
+          0.11564116925001144,
+          -0.04817729815840721,
+          0.7650007605552673
+        ]
+      },
+      "peak_lift_m": {
+        "red": 1.7881393432617188e-07,
+        "green": 0.011516869068145752
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.168103712960146,
+      "elapsed_seconds": 181.42114737199154,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/DP-seed4600000-resume1/result.json"
+    },
+    {
+      "policy": "ACT",
+      "seed": 4600000,
+      "actual_seed": 4600000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 662,
+      "initial": {
+        "red": [
+          -0.20974484086036682,
+          -0.058550577610731125,
+          0.7650007605552673
+        ],
+        "green": [
+          0.1663074940443039,
+          -0.022099748253822327,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          0.006707482505589724,
+          -0.13097228109836578,
+          0.7656094431877136
+        ],
+        "green": [
+          0.0012494000839069486,
+          -0.13637889921665192,
+          0.8156840205192566
+        ]
+      },
+      "peak_lift_m": {
+        "red": 0.06440681219100952,
+        "green": 0.08995252847671509
+      },
+      "prediction_calls": 14,
+      "prediction_seconds": 0.5122729881550185,
+      "elapsed_seconds": 113.70889635098865,
+      "rgbd_guard": false,
+      "depth_input": false,
+      "actor_truth_for_control": false,
+      "untrained_smoke": false,
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/evaluation/fresh_test/ACT-seed4600000-resume1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 2700000,
+      "actual_seed": 2700000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 146,
+      "initial": {
+        "red": [
+          0.22596409916877747,
+          -0.02004317007958889,
+          0.7650007009506226
+        ],
+        "green": [
+          0.12061168253421783,
+          -0.005880000069737434,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.08726493269205093,
+          -0.05240407958626747,
+          0.7650007605552673
+        ],
+        "green": [
+          0.09025128930807114,
+          -0.05340200290083885,
+          0.8166411519050598
+        ]
+      },
+      "prediction_calls": 4,
+      "prediction_seconds": 0.1939699679496698,
+      "elapsed_seconds": 41.12691503303358,
+      "corrected_steps": 23,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed2700000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 2800000,
+      "actual_seed": 2800000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 225,
+      "initial": {
+        "red": [
+          0.13455618917942047,
+          -0.009938106872141361,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.00015941497986204922,
+          -0.12793736159801483,
+          0.764999508857727
+        ],
+        "green": [
+          0.005831879563629627,
+          -0.1305372267961502,
+          0.815096378326416
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2578840859932825,
+      "elapsed_seconds": 61.988796877034474,
+      "corrected_steps": 18,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed2800000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 2900000,
+      "actual_seed": 2900000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 369,
+      "initial": {
+        "red": [
+          -0.15629811584949493,
+          -0.04464677721261978,
+          0.7650007605552673
+        ],
+        "green": [
+          0.17112737894058228,
+          -0.010415124706923962,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.039343010634183884,
+          -0.08884766697883606,
+          0.765053927898407
+        ],
+        "green": [
+          0.03923584520816803,
+          -0.08508993685245514,
+          0.8231507539749146
+        ]
+      },
+      "prediction_calls": 9,
+      "prediction_seconds": 0.3497335620922968,
+      "elapsed_seconds": 82.20584746700479,
+      "corrected_steps": 133,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed2900000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3000000,
+      "actual_seed": 3000000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 236,
+      "initial": {
+        "red": [
+          0.14128246903419495,
+          -0.03308303281664848,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.0012427925830706954,
+          -0.13369527459144592,
+          0.7650004029273987
+        ],
+        "green": [
+          0.006064418237656355,
+          -0.13235294818878174,
+          0.8150050640106201
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2550974419573322,
+      "elapsed_seconds": 55.82212901697494,
+      "corrected_steps": 19,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3000000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3100000,
+      "actual_seed": 3100000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 219,
+      "initial": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.13954351842403412,
+          -0.008642643690109253,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.001898325514048338,
+          -0.13280898332595825,
+          0.7649996280670166
+        ],
+        "green": [
+          0.005729004740715027,
+          -0.13192757964134216,
+          0.8155742883682251
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25646390399197116,
+      "elapsed_seconds": 53.58353892300511,
+      "corrected_steps": 18,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3100000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3200000,
+      "actual_seed": 3200000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 187,
+      "initial": {
+        "red": [
+          0.2632521986961365,
+          -0.07809063047170639,
+          0.7650008201599121
+        ],
+        "green": [
+          0.17040947079658508,
+          -0.03968227282166481,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.08652929961681366,
+          -0.04439049959182739,
+          0.765023946762085
+        ],
+        "green": [
+          0.08647114038467407,
+          -0.045269377529621124,
+          0.8151166439056396
+        ]
+      },
+      "prediction_calls": 5,
+      "prediction_seconds": 0.22751387197058648,
+      "elapsed_seconds": 48.44809378503123,
+      "corrected_steps": 38,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3200000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3300000,
+      "actual_seed": 3300000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 222,
+      "initial": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.18117095530033112,
+          0.01173692848533392,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          -0.0002150181244360283,
+          -0.1189844086766243,
+          0.7650008797645569
+        ],
+        "green": [
+          0.0009104041964747012,
+          -0.12165894359350204,
+          0.8175100684165955
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25179244187893346,
+      "elapsed_seconds": 53.54265028401278,
+      "corrected_steps": 19,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3300000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3400000,
+      "actual_seed": 3400000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 194,
+      "initial": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.10428756475448608,
+          -0.04778005927801132,
+          0.7650760412216187
+        ],
+        "green": [
+          -0.10394839942455292,
+          -0.04864431917667389,
+          0.8169305324554443
+        ]
+      },
+      "prediction_calls": 5,
+      "prediction_seconds": 0.22838001302443445,
+      "elapsed_seconds": 49.52536344801774,
+      "corrected_steps": 42,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3400000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3500000,
+      "actual_seed": 3500000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 213,
+      "initial": {
+        "red": [
+          -0.14979486167430878,
+          -0.07724247872829437,
+          0.7650007605552673
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          0.003030583495274186,
+          -0.13325485587120056,
+          0.7649995684623718
+        ],
+        "green": [
+          -0.002252202248200774,
+          -0.1341329962015152,
+          0.8153520822525024
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25535356102045625,
+      "elapsed_seconds": 53.03707263205433,
+      "corrected_steps": 17,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3500000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3600000,
+      "actual_seed": 3600000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 223,
+      "initial": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19137372076511383,
+          0.002984551480039954,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.00030161914764903486,
+          -0.1323888599872589,
+          0.7650008201599121
+        ],
+        "green": [
+          0.005390658508986235,
+          -0.13510283827781677,
+          0.8167487978935242
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25270805309992284,
+      "elapsed_seconds": 53.97093552799197,
+      "corrected_steps": 17,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3600000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3700000,
+      "actual_seed": 3700000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 222,
+      "initial": {
+        "red": [
+          -0.2574586272239685,
+          0.03356866165995598,
+          0.765000581741333
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.0022245272994041443,
+          -0.1337488442659378,
+          0.7650002241134644
+        ],
+        "green": [
+          -0.001620722352527082,
+          -0.13076017796993256,
+          0.8150079846382141
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25325338693801314,
+      "elapsed_seconds": 56.32362777902745,
+      "corrected_steps": 18,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3700000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3800000,
+      "actual_seed": 3800000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 245,
+      "initial": {
+        "red": [
+          -0.15820015966892242,
+          0.042385730892419815,
+          0.7650006413459778
+        ],
+        "green": [
+          0.21565207839012146,
+          -0.040606480091810226,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.001750023802742362,
+          -0.13818584382534027,
+          0.7650048136711121
+        ],
+        "green": [
+          0.0011983545264229178,
+          -0.14220337569713593,
+          0.8177943229675293
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25509442191105336,
+      "elapsed_seconds": 58.22683095204411,
+      "corrected_steps": 41,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3800000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 3900000,
+      "actual_seed": 3900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19047610461711884,
+          0.03065343014895916,
+          0.7650009989738464
+        ]
+      },
+      "prediction_calls": 16,
+      "prediction_seconds": 0.5600659299525432,
+      "elapsed_seconds": 139.3178427379462,
+      "corrected_steps": 0,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed3900000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4000000,
+      "actual_seed": 4000000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 216,
+      "initial": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347704708576202,
+          -0.0036805819254368544,
+          0.7650008797645569
+        ]
+      },
+      "final": {
+        "red": [
+          0.0012274497421458364,
+          -0.13294601440429688,
+          0.765001118183136
+        ],
+        "green": [
+          0.00804099440574646,
+          -0.1292574405670166,
+          0.8150972723960876
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.25994008005363867,
+      "elapsed_seconds": 53.15584753197618,
+      "corrected_steps": 17,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4000000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4100000,
+      "actual_seed": 4100000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 224,
+      "initial": {
+        "red": [
+          0.19712477922439575,
+          0.02345883473753929,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.000638322439044714,
+          -0.1334504783153534,
+          0.7650001049041748
+        ],
+        "green": [
+          0.005863675381988287,
+          -0.13201043009757996,
+          0.8149981498718262
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.26091366703622043,
+      "elapsed_seconds": 54.10154769802466,
+      "corrected_steps": 17,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4100000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4200000,
+      "actual_seed": 4200000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 171,
+      "initial": {
+        "red": [
+          -0.26208657026290894,
+          0.04653136804699898,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15448717772960663,
+          -0.04284341633319855,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.13251742720603943,
+          -0.08328647166490555,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13117150962352753,
+          -0.08835527300834656,
+          0.8166500926017761
+        ]
+      },
+      "prediction_calls": 5,
+      "prediction_seconds": 0.22568745899479836,
+      "elapsed_seconds": 45.441727234981954,
+      "corrected_steps": 22,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4200000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4300000,
+      "actual_seed": 4300000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 205,
+      "initial": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.15544244647026062,
+          -0.001058395835570991,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.0025040260516107082,
+          -0.13340958952903748,
+          0.7650147080421448
+        ],
+        "green": [
+          0.002459079958498478,
+          -0.13040490448474884,
+          0.8152801394462585
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2657279050326906,
+      "elapsed_seconds": 51.37743153900374,
+      "corrected_steps": 18,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4300000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4400000,
+      "actual_seed": 4400000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 213,
+      "initial": {
+        "red": [
+          0.23021885752677917,
+          0.008454344235360622,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          6.576359737664461e-05,
+          -0.13518890738487244,
+          0.7650008201599121
+        ],
+        "green": [
+          0.006632183212786913,
+          -0.13089415431022644,
+          0.8168281316757202
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2582861199043691,
+      "elapsed_seconds": 52.20764549198793,
+      "corrected_steps": 18,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4400000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4500000,
+      "actual_seed": 4500000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 213,
+      "initial": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          0.26449060440063477,
+          -0.04303636774420738,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.0013987444108352065,
+          -0.1359933316707611,
+          0.7650025486946106
+        ],
+        "green": [
+          -0.0025874213315546513,
+          -0.12994152307510376,
+          0.8150139451026917
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2528472509002313,
+      "elapsed_seconds": 52.218249590019695,
+      "corrected_steps": 16,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4500000-attempt1/result.json"
+    },
+    {
+      "policy": "ACT_RGBD",
+      "seed": 4600000,
+      "actual_seed": 4600000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 221,
+      "initial": {
+        "red": [
+          -0.20974484086036682,
+          -0.058550577610731125,
+          0.7650007605552673
+        ],
+        "green": [
+          0.1663074940443039,
+          -0.022099748253822327,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          0.003253270871937275,
+          -0.13593532145023346,
+          0.7650004625320435
+        ],
+        "green": [
+          -0.001939405919983983,
+          -0.12988175451755524,
+          0.8151563405990601
+        ]
+      },
+      "prediction_calls": 6,
+      "prediction_seconds": 0.2560866550193168,
+      "elapsed_seconds": 57.78857934800908,
+      "corrected_steps": 19,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "checkpoint": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143",
+      "history_on_replan": "ACT cache reset as historical guard evaluation",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/act_rgbd/ACT_RGBD-seed4600000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 2700000,
+      "actual_seed": 2700000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 433,
+      "initial": {
+        "red": [
+          0.22596409916877747,
+          -0.02004317007958889,
+          0.7650007009506226
+        ],
+        "green": [
+          0.12061168253421783,
+          -0.005880000069737434,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.09451005607843399,
+          -0.0998486801981926,
+          0.7650002241134644
+        ],
+        "green": [
+          0.0924966037273407,
+          -0.09960847347974777,
+          0.8157735466957092
+        ]
+      },
+      "prediction_calls": 56,
+      "prediction_seconds": 24.553421513934154,
+      "elapsed_seconds": 119.1548876860179,
+      "corrected_steps": 138,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed2700000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 2800000,
+      "actual_seed": 2800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.13455618917942047,
+          -0.009938106872141361,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.10955047607421875,
+          -0.03330998867750168,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15836726129055023,
+          -0.03783397376537323,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.815659374697134,
+      "elapsed_seconds": 197.27599383000052,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed2800000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 2900000,
+      "actual_seed": 2900000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 425,
+      "initial": {
+        "red": [
+          -0.15629811584949493,
+          -0.04464677721261978,
+          0.7650007605552673
+        ],
+        "green": [
+          0.17112737894058228,
+          -0.010415124706923962,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.03458748385310173,
+          -0.07719294726848602,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.024511849507689476,
+          -0.07684831321239471,
+          0.8185782432556152
+        ]
+      },
+      "prediction_calls": 54,
+      "prediction_seconds": 23.087977484683506,
+      "elapsed_seconds": 111.92346601001918,
+      "corrected_steps": 19,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed2900000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3000000,
+      "actual_seed": 3000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14128246903419495,
+          -0.03308303281664848,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.002579857362434268,
+          -0.17590059340000153,
+          0.7650008797645569
+        ],
+        "green": [
+          -0.20770356059074402,
+          0.004016249906271696,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.005018059920985,
+      "elapsed_seconds": 190.08260554698063,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3000000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3100000,
+      "actual_seed": 3100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.13954351842403412,
+          -0.008642643690109253,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.23386527597904205,
+          -0.002549588680267334,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1395437866449356,
+          -0.008642436936497688,
+          0.7650009393692017
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 43.02525423275074,
+      "elapsed_seconds": 196.1552220149897,
+      "corrected_steps": 185,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3100000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3200000,
+      "actual_seed": 3200000,
+      "complete": true,
+      "valid": true,
+      "success": true,
+      "steps": 143,
+      "initial": {
+        "red": [
+          0.2632521986961365,
+          -0.07809063047170639,
+          0.7650008201599121
+        ],
+        "green": [
+          0.17040947079658508,
+          -0.03968227282166481,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.004919432569295168,
+          -0.15255950391292572,
+          0.7650034427642822
+        ],
+        "green": [
+          0.006548293866217136,
+          -0.15672844648361206,
+          0.8153878450393677
+        ]
+      },
+      "prediction_calls": 20,
+      "prediction_seconds": 8.68488514010096,
+      "elapsed_seconds": 49.582381003012415,
+      "corrected_steps": 22,
+      "replans": 2,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3200000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3300000,
+      "actual_seed": 3300000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.18117095530033112,
+          0.01173692848533392,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          0.21057836711406708,
+          -0.006580915302038193,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1270347237586975,
+          0.040646906942129135,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.704703178897034,
+      "elapsed_seconds": 192.74121025000932,
+      "corrected_steps": 315,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3300000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3400000,
+      "actual_seed": 3400000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.2659153342247009,
+          0.020544784143567085,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.14146515727043152,
+          -0.0033808506559580564,
+          0.7650007009506226
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.84518481395207,
+      "elapsed_seconds": 189.36504759598756,
+      "corrected_steps": 0,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3400000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3500000,
+      "actual_seed": 3500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.14979486167430878,
+          -0.07724247872829437,
+          0.7650007605552673
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "final": {
+        "red": [
+          -0.1216716542840004,
+          -0.12545762956142426,
+          0.7650008201599121
+        ],
+        "green": [
+          0.14049673080444336,
+          -0.04442563280463219,
+          0.7650006413459778
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.75362737075193,
+      "elapsed_seconds": 198.43012879998423,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3500000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3600000,
+      "actual_seed": 3600000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19137372076511383,
+          0.002984551480039954,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          0.19477775692939758,
+          0.03828711435198784,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.19965723156929016,
+          0.014415095560252666,
+          0.7650009393692017
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.71333774208324,
+      "elapsed_seconds": 191.99483636004152,
+      "corrected_steps": 0,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3600000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3700000,
+      "actual_seed": 3700000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.2574586272239685,
+          0.03356866165995598,
+          0.765000581741333
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.1893991082906723,
+          0.06363749504089355,
+          0.7650008797645569
+        ],
+        "green": [
+          0.20176804065704346,
+          -0.04975026473402977,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.15365149319405,
+      "elapsed_seconds": 195.72900297498563,
+      "corrected_steps": 9,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3700000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3800000,
+      "actual_seed": 3800000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.15820015966892242,
+          0.042385730892419815,
+          0.7650006413459778
+        ],
+        "green": [
+          0.21565207839012146,
+          -0.040606480091810226,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.02081824280321598,
+          -0.1212545707821846,
+          0.7650007605552673
+        ],
+        "green": [
+          0.22412195801734924,
+          -0.06134792044758797,
+          0.7650008201599121
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.47118089493597,
+      "elapsed_seconds": 196.5228940550005,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3800000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 3900000,
+      "actual_seed": 3900000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14769956469535828,
+          -0.024610918015241623,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.04964093863964081,
+          -0.07165877521038055,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.1810360699892044,
+          0.012052386067807674,
+          0.7650008201599121
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.35831296193646,
+      "elapsed_seconds": 194.7458746850025,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed3900000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4000000,
+      "actual_seed": 4000000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347704708576202,
+          -0.0036805819254368544,
+          0.7650008797645569
+        ]
+      },
+      "final": {
+        "red": [
+          0.14140380918979645,
+          -0.017620593309402466,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.13347728550434113,
+          -0.003680942114442587,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.692351569305174,
+      "elapsed_seconds": 196.08973107405473,
+      "corrected_steps": 0,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4000000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4100000,
+      "actual_seed": 4100000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.19712477922439575,
+          0.02345883473753929,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          0.006502782925963402,
+          -0.17265960574150085,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.16978222131729126,
+          -0.01624222844839096,
+          0.7650007605552673
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 45.50473875791067,
+      "elapsed_seconds": 212.60991671896772,
+      "corrected_steps": 8,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4100000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4200000,
+      "actual_seed": 4200000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.26208657026290894,
+          0.04653136804699898,
+          0.7650007605552673
+        ],
+        "green": [
+          -0.15448717772960663,
+          -0.04284341633319855,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.2590808570384979,
+          -0.01651856303215027,
+          0.7650008201599121
+        ],
+        "green": [
+          -0.17740899324417114,
+          -0.040556397289037704,
+          0.7650009393692017
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 42.93613485409878,
+      "elapsed_seconds": 187.90270502795465,
+      "corrected_steps": 283,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4200000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4300000,
+      "actual_seed": 4300000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.15544244647026062,
+          -0.001058395835570991,
+          0.7650008201599121
+        ]
+      },
+      "final": {
+        "red": [
+          -0.19784946739673615,
+          -0.050397299230098724,
+          0.7650006413459778
+        ],
+        "green": [
+          0.14089637994766235,
+          0.005496143829077482,
+          0.7650007009506226
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.739965381566435,
+      "elapsed_seconds": 191.59072229801677,
+      "corrected_steps": 289,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4300000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4400000,
+      "actual_seed": 4400000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          0.23021885752677917,
+          0.008454344235360622,
+          0.7650006413459778
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          0.040938783437013626,
+          -0.1777186095714569,
+          0.7650008797645569
+        ],
+        "green": [
+          -0.2300771176815033,
+          -0.022621354088187218,
+          0.7650007009506226
+        ]
+      },
+      "prediction_calls": 101,
+      "prediction_seconds": 43.4472203758196,
+      "elapsed_seconds": 192.56894841202302,
+      "corrected_steps": 9,
+      "replans": 1,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4400000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4500000,
+      "actual_seed": 4500000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          0.26449060440063477,
+          -0.04303636774420738,
+          0.7650007605552673
+        ]
+      },
+      "final": {
+        "red": [
+          -0.25072669982910156,
+          0.006436423398554325,
+          0.7650007009506226
+        ],
+        "green": [
+          0.006635540165007114,
+          -0.13457033038139343,
+          0.8334155678749084
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.780288481211755,
+      "elapsed_seconds": 191.7574649329763,
+      "corrected_steps": 325,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4500000-attempt1/result.json"
+    },
+    {
+      "policy": "DP_RGBD",
+      "seed": 4600000,
+      "actual_seed": 4600000,
+      "complete": true,
+      "valid": true,
+      "success": false,
+      "steps": 800,
+      "initial": {
+        "red": [
+          -0.20974484086036682,
+          -0.058550577610731125,
+          0.7650007605552673
+        ],
+        "green": [
+          0.1663074940443039,
+          -0.022099748253822327,
+          0.7650007009506226
+        ]
+      },
+      "final": {
+        "red": [
+          -0.20974484086036682,
+          -0.058550577610731125,
+          0.7650007605552673
+        ],
+        "green": [
+          0.11753052473068237,
+          -0.04667717590928078,
+          0.7650007009506226
+        ]
+      },
+      "prediction_calls": 100,
+      "prediction_seconds": 42.75031207065331,
+      "elapsed_seconds": 192.27368561102776,
+      "corrected_steps": 358,
+      "replans": 0,
+      "rgbd_guard": true,
+      "depth_input": false,
+      "guard_depth_input": true,
+      "actor_truth_for_control": false,
+      "controller": "visual_guard_v2_initfix; initialization only, thresholds unchanged",
+      "history_on_replan": "preserve latest actual RGB frames; clear only cached actions",
+      "cohort": "fresh_test",
+      "result_path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/rgbd/DP_RGBD-seed4600000-attempt1/result.json"
+    }
+  ],
+  "seeds": [
+    2700000,
+    2800000,
+    2900000,
+    3000000,
+    3100000,
+    3200000,
+    3300000,
+    3400000,
+    3500000,
+    3600000,
+    3700000,
+    3800000,
+    3900000,
+    4000000,
+    4100000,
+    4200000,
+    4300000,
+    4400000,
+    4500000,
+    4600000
+  ],
+  "source_hashes": {
+    "scripts/dp_comparison/visual_guard_initfix.py": "8d30af9a66469324a3fc133b7ea1c6de76f06ab995380b0d3651d9e516db29fc",
+    "scripts/dp_comparison/evaluate_act_rgbd.py": "34ad874a635aee0ccb091a3cf2340f0fba0fe8a0a5a713b12e09a6335aada8f0",
+    "scripts/dp_comparison/act_rgbd_followup.py": "b659313e531afb9879b51117b31568a6b53231c76897e3687563d6dcbb21ca5c",
+    "scripts/dp_comparison/common.py": "53241d59612b284c13e44bfb9cb109b0b03c31fafdc33f955394ebd335f66da3",
+    "scripts/dp_comparison/report_comparison.py": "642428f73e2da12890c92eddc173db1e51215443b5e2307566d670f931964bf5",
+    "data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/visual_guard_test20_20261006_231054/visual_guard.py": "577ab8a8d67c45d2c8f7dadb9b4b23a7b68e05dea9d6f393f30721038061a941",
+    "data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/visual_guard_test20_20261006_231054/serial_camera.py": "ababcc8c7b2858b897dd823278682b0dc4a46c4dcee0886ebfe6c141cd7f5a91",
+    "data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/visual_guard_test20_20261006_231054/act_eval_config.yml": "b5f728e382b791ec1faee1e519a59e98dc634da73f644919ebc2480840390606",
+    "XPolicyLab/policy/ACT/constants.py": "16e81bcf7de8d2b6b81f8bdaa2733b04618569a2524202fb30c1d4f8a4026ed3",
+    "XPolicyLab/policy/ACT/model.py": "3da0a2662ab266de713e7b750e904ac0b97de5b3ae6018299deec5b14782d41d",
+    "XPolicyLab/policy/ACT/__init__.py": "74dcd563e3bf888034430f8dd4d83c73df61d60d03a69a1475b3484a293cf5b2",
+    "XPolicyLab/policy/ACT/imitate_episodes.py": "207c1f49d226901515604462af9d0df356141aee8cdf5e82ed7de761271bdb32",
+    "XPolicyLab/policy/ACT/losses.py": "6276e3d9cd3e805e02f5ee7d1aa083d4413c1984d5e0d056055b16ce927f3045",
+    "XPolicyLab/policy/ACT/utils.py": "afa9c8d0b3c0a89030768b2bf70697084b52bff8b86ad5693a02bfb0670edfb5",
+    "XPolicyLab/policy/ACT/deploy.py": "5dfdcc3eb24ee1703745446dfbbba59beedfec4f176549103a2b9ae916fdbd7c",
+    "XPolicyLab/policy/ACT/tests/test_repaired_training.py": "ef494412c8cbb0acca07d169c0e19048f19c02cf49b125456db2a33871f47a59",
+    "XPolicyLab/policy/ACT/tests/test_training_artifacts.py": "256665cbdc0b9cd0f9b45b8b143952fbafb0f410f1835ea21693d10b3d7e4b2b",
+    "XPolicyLab/policy/ACT/tests/test_data_loading.py": "e1ddc0f6e25980db0ae050b75d7902dec5d5d91c53d79c4653267394f9aa3c3e",
+    "XPolicyLab/policy/ACT/detr/act_policy.py": "694668a294b3f4f207b1bc0cf4b0896104fe83b735cae9ea43692bfd8e0fa4d3",
+    "XPolicyLab/policy/ACT/detr/process_data.py": "d4cba1adc6038ea5f9766f1499086131ba5b333e9301d2879304a6e825c7f540",
+    "XPolicyLab/policy/ACT/detr/setup.py": "9a44d0125d73963ca219fd16cb511426b5fa2dfb7a499b7d9f08422ab822ccfe",
+    "XPolicyLab/policy/ACT/detr/main.py": "af354debe59cb7304328cd41218cefd1b8032a4f5e48df26f96e4a3d7f581169",
+    "XPolicyLab/policy/ACT/detr/models/position_encoding.py": "12578dbadbaea2d8252c43f818b5826b1cf141feb8df1de2a012da81138080e4",
+    "XPolicyLab/policy/ACT/detr/models/transformer.py": "837506820a3c564896d9d694681b9a803c14e6ec30081ec9336f493158c06f4b",
+    "XPolicyLab/policy/ACT/detr/models/detr_vae.py": "90c02fc295197c1a8fc5732dcae330ebe876507075a25cbb66ddadbcb7ef2b9b",
+    "XPolicyLab/policy/ACT/detr/models/__init__.py": "3c09396628dc91ed32b59beeedb4f818fbd7bf3e5154b728513063ecdc0ac1c5",
+    "XPolicyLab/policy/ACT/detr/models/backbone.py": "476d954304220c4d34fa9eb725ea2eaa54da72be452e8a645e19989f95880aee",
+    "XPolicyLab/policy/ACT/detr/util/box_ops.py": "4c28aba49a4bb3ff18385e4940ad8ca7ad788aa4cfb03b075d15d9b4294d6aa6",
+    "XPolicyLab/policy/ACT/detr/util/plot_utils.py": "e8d46523fbf7aca10c2911be55441685e0cd1a6f4faa7382fcefb62c06b3bdca",
+    "XPolicyLab/policy/ACT/detr/util/misc.py": "f9210613ef5d7477c01ad1cc6946c36a0221102cf6159ad7c261dd20b8feb374",
+    "XPolicyLab/policy/ACT/detr/util/__init__.py": "9e535c45af09ac24ef8d5631a151f77febafe72a92ad6bfeb2d941f0c4a54e35"
+  },
+  "steps_limit": 800,
+  "report_scope": "final four-way fresh-test cohort",
+  "pure_development_summary": {
+    "ACT": {
+      "valid_cases": 5,
+      "successes": 0,
+      "red_sustained_lift_proxy": 2,
+      "green_sustained_lift_proxy": 0,
+      "red_base_geometry_proxy": 2,
+      "sustained_stack_geometry_proxy": 0,
+      "median_final_xy_cm": 46.78070793888916,
+      "mean_model_seconds_per_action": 0.0007189668864157284
+    },
+    "DP": {
+      "valid_cases": 5,
+      "successes": 0,
+      "red_sustained_lift_proxy": 0,
+      "green_sustained_lift_proxy": 0,
+      "red_base_geometry_proxy": 0,
+      "sustained_stack_geometry_proxy": 0,
+      "median_final_xy_cm": 42.159473561102615,
+      "mean_model_seconds_per_action": 0.054078790091050905
+    }
+  }
+}

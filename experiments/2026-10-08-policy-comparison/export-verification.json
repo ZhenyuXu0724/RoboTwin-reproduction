@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "paired_cases": 20,
+  "formal_rollouts": 80,
+  "additional_ablation_rollouts": 20,
+  "successes": {
+    "ACT": 3,
+    "DP": 0,
+    "ACT_RGBD": 19,
+    "DP_RGBD": 3,
+    "ACT_GRASP_ONLY": 14
+  },
+  "paired_initial_positions_equal": true,
+  "ablation_action_prefix_difference": 0,
+  "frozen_source_checks": [
+    {
+      "manifest": "data/dp_compare_20261007/run2000_v2/act_release_ablation_20261008/protocol.json",
+      "source_hashes_verified": 35
+    },
+    {
+      "manifest": "data/dp_compare_20261007/run2000_v2/diagnosis_20261008/manifest.json",
+      "source_hashes_verified": 2
+    }
+  ],
+  "weights_verified": {
+    "ACT": {
+      "path": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143/policy_last.ckpt",
+      "bytes": 335907847,
+      "sha256": "e242a25826d8ace1d41999c6bf04b695e9a60027a31d6fbbdde897a6dd662542",
+      "public_download": null
+    },
+    "ACT_stats": {
+      "path": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/checkpoints/demo_train50_wrist_v2-stack_blocks_two-aloha_agilex-joint-0-repaired-20261006_191143/dataset_stats.pkl",
+      "bytes": 19459,
+      "sha256": "de075b0ec6f54051b9060f774f41c2f23d655500fb62bee089a60859fc102995",
+      "public_download": null
+    },
+    "DP_EMA": {
+      "path": "${ROBOTWIN_ROOT}/data/dp_compare_20261007/run2000_v2/training/2000.pt",
+      "bytes": 1128097307,
+      "sha256": "67dc045e12f46e7a3516037877612a0e9482d04c4fa9b8c7063c34c8646c75a8",
+      "public_download": null
+    }
+  },
+  "technical_report_written": false,
+  "formal_experiments_rerun": false,
+  "source_workspace_modified": false,
+  "validation": {
+    "act_tests": 20,
+    "dp_contract_tests": 5,
+    "guard_initfix_tests": 1,
+    "ablation_tests": 2,
+    "all_passed": true,
+    "clean_baseline_four_patch_restore": "passed",
+    "source_snapshots": 24
+  }
+}

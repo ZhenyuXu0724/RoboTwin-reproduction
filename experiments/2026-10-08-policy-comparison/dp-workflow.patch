@@ -1,0 +1,2243 @@
+diff --git a/scripts/dp_comparison/act_ablation_followup.py b/scripts/dp_comparison/act_ablation_followup.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/act_ablation_followup.py
+@@ -0,0 +1,129 @@
++"""Predeclared matched ACT release-component ablation; no training or tuning."""
++import datetime
++import json
++import os
++import signal
++import subprocess
++import sys
++import traceback
++from pathlib import Path
++from common import ROOT,ACT_RUN,sha,save_json,np
++from report_comparison import diagnostic
++
++RUN=ROOT/'data/dp_compare_20261007/run2000_v2'
++GROUP=RUN/'act_release_ablation_20261008'
++HYPOTHESIS='Release alignment improves stacking after lifting green, beyond grasp alignment alone.'
++
++def main():
++    GROUP.mkdir(exist_ok=True)
++    scripts=Path(__file__).parent
++    sources=[Path(__file__),scripts/'evaluate_act_ablation.py',scripts/'evaluate_act_rgbd.py',
++        scripts/'visual_guard_no_release.py',scripts/'visual_guard_initfix.py',scripts/'common.py',
++        scripts/'report_comparison.py',ROOT/'scripts/eval_policy_xpolicylab.py',ROOT/'envs/_base_task.py',
++        ROOT/'envs/camera/camera.py',ACT_RUN/'visual_guard_test20_20261006_231054/serial_camera.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/act_eval_config.yml']
++    sources+=list((ROOT/'XPolicyLab/policy/ACT').rglob('*.py'))
++    experiment=json.loads((RUN/'experiment.json').read_text())
++    full=json.loads((RUN/'act_rgbd/results.json').read_text())['rows']
++    pure=[r for r in json.loads((RUN/'comparison.json').read_text())['rows'] if r['policy']=='ACT' and r['cohort']=='fresh_test']
++    seeds=list(range(2700000,4700000,100000));assert len(full)==len(pure)==20
++    state={'status':'starting','pid':os.getpid(),'started_at':datetime.datetime.now().astimezone().isoformat(),
++        'completed_cases':0,'retries':[],'hypothesis':HYPOTHESIS,'seeds':seeds,'steps_limit':800,
++        'model_retrained':False,'tuning_during_evaluation':False,'new_model_added':False,
++        'checkpoint_sha256':experiment['act_checkpoint_sha256'],
++        'source_hashes':{str(p.relative_to(ROOT)):sha(p) for p in sources},
++        'baseline_results_sha256':sha(RUN/'act_rgbd/results.json'),
++        'removed_component':'whole release branch, including release hold and its settle/replan',
++        'retained_components':'visual cube estimates, grasp alignment, grasp hold, cache reset, thresholds',
++        'primary_metric':'paired official stacking success at <=800 actions',
++        'secondary_metrics':'green sustained-lift proxy; final stack errors; intervention events',
++        'scope':'post-hoc component attribution on existing scenes, not independent new generalization test'}
++    save_json(GROUP/'protocol.json',state)
++    def progress(status,**extra):
++        state.update(status=status,updated_at=datetime.datetime.now().astimezone().isoformat(),**extra)
++        save_json(GROUP/'progress.json',state)
++    def run_case(seed,steps,path):
++        path.mkdir(parents=True,exist_ok=False)
++        with (path/'eval.log').open('x') as log:
++            return subprocess.run([sys.executable,'-u',str(scripts/'evaluate_act_ablation.py'),
++                '--seed',str(seed),'--steps',str(steps),'--output',str(path)],cwd=ROOT,
++                stdout=log,stderr=subprocess.STDOUT,timeout=1800)
++    def prefix_check(row,baseline):
++        bp=Path(baseline['result_path']).parent;ap=Path(row['result_path']).parent
++        events=[json.loads(x) for x in (bp/'visual_guard.jsonl').read_text().splitlines()]
++        release=[e['step'] for e in events if e.get('event') in ['aligned_release','align_before_release','release_blocked_missing_vision']]
++        until=min(release) if release else min(row['steps'],baseline['steps'])
++        actions=lambda p:np.asarray([json.loads(x)['action'] for x in (p/'trace.jsonl').read_text().splitlines()])
++        a,b=actions(ap),actions(bp);assert len(a)>=until and len(b)>=until
++        error=float(np.max(np.abs(a[:until]-b[:until]))) if until else 0.
++        assert error<=1e-5,f'Unexpected pre-release divergence {error}'
++        return {'matched_action_prefix_steps':until,'prefix_max_command_difference':error}
++    try:
++        ckpt=Path(experiment['act_checkpoint'])/'policy_last.ckpt'
++        assert sha(ckpt)==state['checkpoint_sha256']
++        progress('wiring_smoke')
++        smoke=run_case(200000,2,GROUP/'wiring-smoke');assert smoke.returncode==0
++        assert json.loads((GROUP/'wiring-smoke/result.json').read_text())['release_alignment'] is False
++        rows=[]
++        for seed in seeds:
++            for rel,h in state['source_hashes'].items():assert sha(ROOT/rel)==h,f'Frozen source changed: {rel}'
++            assert sha(ckpt)==state['checkpoint_sha256']
++            assert sha(RUN/'act_rgbd/results.json')==state['baseline_results_sha256']
++            for attempt in range(1,4):
++                case=GROUP/f'ACT_GRASP_ONLY-seed{seed}-attempt{attempt}'
++                progress('evaluating',current_seed=seed,current_attempt=attempt,completed_cases=len(rows))
++                execution=run_case(seed,800,case)
++                if execution.returncode==0:
++                    row=json.loads((case/'result.json').read_text())
++                    assert row['valid'] and row['actual_seed']==seed and row['release_alignment'] is False
++                    baseline=next(r for r in full if r['seed']==seed)
++                    control=next(r for r in pure if r['seed']==seed)
++                    assert row['initial']==baseline['initial']==control['initial']
++                    row.update(cohort='fresh_test',result_path=str(case/'result.json'))
++                    row.update(prefix_check(row,baseline));row['diagnostic']=diagnostic(row)
++                    events=[json.loads(x) for x in (case/'visual_guard.jsonl').read_text().splitlines()]
++                    assert not any(e.get('event') in ['aligned_release','align_before_release','release_blocked_missing_vision'] for e in events)
++                    row['guard_event_counts']={name:sum(e.get('event')==name for e in events) for name in ['align_open','aligned_close','settle_closed']}
++                    rows.append(row);save_json(GROUP/'results.partial.json',rows)
++                    progress('evaluating',completed_cases=len(rows),successes=sum(r['success'] for r in rows));break
++                state['retries'].append({'seed':seed,'attempt':attempt,'returncode':execution.returncode,'log':str(case/'eval.log')})
++                progress('evaluating')
++                if execution.returncode not in [-signal.SIGSEGV,-signal.SIGABRT]:raise RuntimeError(f'Invalid evaluation at {seed}: {execution.returncode}')
++            else:raise RuntimeError(f'Three native crashes at {seed}')
++        summaries={};pairs={}
++        for policy,cases in [('ACT',pure),('ACT_GRASP_ONLY',rows),('ACT_RGBD',full)]:
++            ds=[diagnostic(r) for r in cases]
++            summaries[policy]={'valid_cases':20,'successes':sum(r['success'] for r in cases),
++                'green_sustained_lift_proxy':sum(d['green_sustained_lift_proxy'] for d in ds),
++                'red_sustained_lift_proxy':sum(d['red_sustained_lift_proxy'] for d in ds),
++                'median_final_xy_cm':float(np.median([d['final_stack_xy_error_cm'] for d in ds])),
++                'corrected_steps':sum(r.get('corrected_steps',0) for r in cases),'replans':sum(r.get('replans',0) for r in cases)}
++        for seed in seeds:
++            a=next(r for r in rows if r['seed']==seed);b=next(r for r in full if r['seed']==seed)
++            key=f"FULL_{int(b['success'])}_NO_RELEASE_{int(a['success'])}";pairs[key]=pairs.get(key,0)+1
++        result={'status':'completed','hypothesis':HYPOTHESIS,'summaries':summaries,'paired_outcomes':pairs,
++            'rows':rows,'protocol':state,'baseline_rows':full,'pure_rows':pure}
++        save_json(GROUP/'results.json',result)
++        lines=['# ACT 释放纠偏消融报告','',
++            '假设：在抓取前对齐已经保留的条件下，释放前的几何对齐与释放控制分支能进一步提高堆叠成功率。此实验不增加第三种模型，不重新训练 ACT。','',
++            '## 配对结果','', '| 组别 | 官方成功数 | 红块持续抬升代理 | 绿块持续抬升代理 | 最终 XY 误差中位数 cm | 改写动作步数 | 重新预测次数 |',
++            '| --- | --- | --- | --- | --- | --- | --- |']
++        for p,s in summaries.items():lines.append(f"| {p} | {s['successes']}/20 | {s['red_sustained_lift_proxy']}/20 | {s['green_sustained_lift_proxy']}/20 | {s['median_final_xy_cm']:.2f} | {s['corrected_steps']} | {s['replans']} |")
++        lines+=['','完整纠偏与关闭释放纠偏的配对计数：'+json.dumps(pairs,ensure_ascii=False),
++            '', '## 比较条件与解释边界','',
++            '唯一代码差异是禁用整个释放对齐分支，包括该分支的阻止提前打开、几何对齐、释放后的保持和关联重新预测。其余抓取对齐、深度估计、阈值、ACT 权重与 50 步缓存配置不变。该实验隔离释放分支整体贡献，不分别识别其中几何纠偏、等待释放和重新预测的贡献，也不是 ACT 网络训练修复的消融。',
++            '', '三组使用相同的 20 个种子 2700000 至 4600000，间隔 100000，初始位姿逐场一致，每场最多 800 步；纯 ACT 与完整纠偏复用已完成的正式结果，不混入其他种子上的历史 95%。校验第一次释放介入之前的动作前缀，确认此前控制行为一致。',
++            '', '这是在已经看过的场景上的事后组件归因，不是新的独立泛化测试。只有一个训练种子和 20 个场景，不能将观察到的贡献推广为算法排名。若消融未降分，应如实认为本轮未显示额外成功率贡献，而非继续调参直到得到预期结果。',
++            '', '持续抬升代理并非经过验证的抓取成功；官方成功未额外验证长期稳定性。深度只进入控制器，方块真值只用于事后评分，不进入控制决策。原生崩溃尝试单独保留并同种子重试，不计任务失败。']
++        (RUN/'ACT_ABLATION.md').write_text('\n'.join(lines)+'\n')
++        progress('completed',completed_cases=20,summaries=summaries,paired_outcomes=pairs,report=str(RUN/'ACT_ABLATION.md'))
++    except Exception as error:
++        progress('failed',error=str(error),traceback=traceback.format_exc());raise
++
++if __name__=='__main__':
++    if '--detach' in sys.argv:
++        GROUP.mkdir(exist_ok=True)
++        with (GROUP/'coordinator.log').open('x') as log:
++            proc=subprocess.Popen([sys.executable,'-u',__file__],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++        print('ACT release ablation launched:',proc.pid)
++    else:main()
+diff --git a/scripts/dp_comparison/act_rgbd_followup.py b/scripts/dp_comparison/act_rgbd_followup.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/act_rgbd_followup.py
+@@ -0,0 +1,114 @@
++"""Add the authorized matched ACT RGB-D cohort after the DP RGB-D cohort finishes."""
++import datetime
++import json
++import os
++import signal
++import subprocess
++import sys
++import time
++import traceback
++from pathlib import Path
++from common import ROOT,ACT_RUN,sha,save_json
++from report_comparison import diagnostic
++
++OUTPUT=ROOT/'data/dp_compare_20261007/run2000_v2'
++GROUP=OUTPUT/'act_rgbd'
++
++def main():
++    GROUP.mkdir(exist_ok=True)
++    state={'status':'waiting_for_dp_rgbd','pid':os.getpid(),'started_at':datetime.datetime.now().astimezone().isoformat(),
++           'completed_cases':0,'retries':[],'tuning_during_evaluation':False,'model_retrained':False}
++    scripts=Path(__file__).parent
++    sources=[scripts/'visual_guard_initfix.py',scripts/'evaluate_act_rgbd.py',scripts/'act_rgbd_followup.py',scripts/'common.py',scripts/'report_comparison.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/visual_guard.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/serial_camera.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/act_eval_config.yml']
++    sources+=list((ROOT/'XPolicyLab/policy/ACT').rglob('*.py'))
++    state['source_hashes']={str(p.relative_to(ROOT)):sha(p) for p in sources}
++    def progress(status,**extra):
++        state.update(status=status,updated_at=datetime.datetime.now().astimezone().isoformat(),**extra)
++        save_json(GROUP/'progress.json',state)
++    def run_case(seed,steps,path):
++        path.mkdir(parents=True,exist_ok=False)
++        with (path/'eval.log').open('x') as log:
++            return subprocess.run([sys.executable,'-u',str(scripts/'evaluate_act_rgbd.py'),'--seed',str(seed),
++                '--steps',str(steps),'--output',str(path)],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,timeout=1800)
++    try:
++        progress('waiting_for_dp_rgbd')
++        deadline=time.monotonic()+4*3600
++        while not (OUTPUT/'rgbd/results.json').exists():
++            dp=json.loads((OUTPUT/'rgbd/progress.json').read_text())
++            if dp['status']=='failed':raise RuntimeError('DP RGB-D cohort failed: '+dp.get('error',''))
++            if time.monotonic()>deadline:raise RuntimeError('DP RGB-D cohort did not finish within four hours')
++            time.sleep(30)
++        dp_result=json.loads((OUTPUT/'rgbd/results.json').read_text())
++        assert dp_result['status']=='completed' and len(dp_result['rows'])==20
++        pure=json.loads((OUTPUT/'comparison.json').read_text())
++        manifest=json.loads((OUTPUT/'experiment.json').read_text())
++        state.update(seeds=manifest['fresh_test_seeds'],steps_limit=800,
++            act_checkpoint_sha256=manifest['act_checkpoint_sha256'],dp_checkpoint_sha256=manifest['checkpoint_sha256'])
++        assert sha(Path(manifest['act_checkpoint'])/'policy_last.ckpt')==state['act_checkpoint_sha256']
++        save_json(GROUP/'frozen_manifest.json',state)
++        progress('act_rgbd_wiring_smoke')
++        smoke=run_case(200000,2,GROUP/'wiring-smoke');assert smoke.returncode==0,'ACT RGB-D wiring smoke failed'
++        rows=[]
++        for seed in state['seeds']:
++            for rel,digest in state['source_hashes'].items():assert sha(ROOT/rel)==digest,f'Source changed: {rel}'
++            for attempt in range(1,4):
++                case=GROUP/f'ACT_RGBD-seed{seed}-attempt{attempt}'
++                progress('evaluating_act_rgbd',current_seed=seed,current_attempt=attempt,completed_cases=len(rows))
++                result=run_case(seed,800,case)
++                if result.returncode==0:
++                    row=json.loads((case/'result.json').read_text());assert row['valid'] and row['actual_seed']==seed
++                    dp=next(r for r in dp_result['rows'] if r['seed']==seed)
++                    baseline=next(r for r in pure['rows'] if r['policy']=='ACT' and r['cohort']=='fresh_test' and r['seed']==seed)
++                    assert row['initial']==dp['initial']==baseline['initial'],'Matched cohort scene mismatch'
++                    row.update(cohort='fresh_test',result_path=str(case/'result.json'));rows.append(row)
++                    save_json(GROUP/'results.partial.json',rows)
++                    progress('evaluating_act_rgbd',completed_cases=len(rows),successes=sum(r['success'] for r in rows));break
++                state['retries'].append({'seed':seed,'attempt':attempt,'returncode':result.returncode,'log':str(case/'eval.log')})
++                progress('evaluating_act_rgbd')
++                if result.returncode not in [-signal.SIGSEGV,-signal.SIGABRT]:raise RuntimeError(f'ACT RGB-D evaluation error {seed}: {result.returncode}')
++            else:raise RuntimeError(f'Three native crashes at seed {seed}')
++        assert len(rows)==20
++        save_json(GROUP/'results.json',{'status':'completed','valid_cases':20,'successes':sum(r['success'] for r in rows),
++            'success_rate':sum(r['success'] for r in rows)/20,'rows':rows})
++        all_rows=[r for r in pure['rows'] if r['cohort']=='fresh_test']+dp_result['rows']+rows
++        summaries={}
++        for policy in ['ACT','DP','ACT_RGBD','DP_RGBD']:
++            cases=[r for r in all_rows if r['policy']==policy];assert len(cases)==20
++            diag=[diagnostic(r) for r in cases]
++            summaries[policy]={'successes':sum(r['success'] for r in cases),'valid_cases':20,
++                'red_sustained_lift_proxy':sum(d['red_sustained_lift_proxy'] for d in diag),
++                'green_sustained_lift_proxy':sum(d['green_sustained_lift_proxy'] for d in diag),
++                'mean_steps':sum(r['steps'] for r in cases)/20,
++                'corrected_steps':sum(r.get('corrected_steps',0) for r in cases),'replans':sum(r.get('replans',0) for r in cases)}
++        pairs={}
++        for seed in state['seeds']:
++            a=next(r for r in rows if r['seed']==seed);d=next(r for r in dp_result['rows'] if r['seed']==seed)
++            key=f"ACT_RGBD_{int(a['success'])}_DP_RGBD_{int(d['success'])}";pairs[key]=pairs.get(key,0)+1
++        save_json(OUTPUT/'FOUR_WAY_COMPARISON.json',{'status':'completed','summaries':summaries,'rgbd_paired_outcomes':pairs,
++            'rows':all_rows,'seeds':state['seeds'],'source_hashes':state['source_hashes']})
++        lines=['# 堆叠方块 ACT 与 DP 及 RGB-D 纠偏对照报告','',
++            '四组使用同一批 20 个种子、严格相同的初始方块位置和每场最多 800 步的预算。训练数据均为 50 条演示和固定 40/10 划分，两个模型均训练 2000 轮。RGB-D 组不重新训练模型。',
++            '', '## 同场景结果','', '| 策略 | 官方成功数 | 红块持续抬升代理 | 绿块持续抬升代理 | 平均动作步数 | 纠偏改写动作步数 | 纠偏后重新预测次数 |',
++            '| --- | --- | --- | --- | --- | --- | --- |']
++        for policy,s in summaries.items():lines.append(f"| {policy} | {s['successes']}/20 | {s['red_sustained_lift_proxy']}/20 | {s['green_sustained_lift_proxy']}/20 | {s['mean_steps']:.1f} | {s['corrected_steps']} | {s['replans']} |")
++        lines+=['', '## RGB-D 组的配对结果','',json.dumps(pairs,ensure_ascii=False),
++            '', '## 解释边界','',
++            '持续抬升代理为相对初始高度超过 2.5 cm 且连续至少 5 个动作步，不代表经过夹持验证的抓取成功。官方成功要求堆叠位置容差满足且双夹爪打开，未额外验证释放后的长期稳定性。',
++            'ACT 与 DP 使用各自既有的 2000 轮权重。两组 RGB-D 复用同一个 visual_guard_v2_initfix，仅修复释放分支缺少运动学初始化的缺陷，所有纠偏阈值不变。修复前结果及无效异常尝试单独保留，不混入本轮 20 场统计。控制器使用深度、相机标定、已知红绿颜色和 5 cm 尺寸；方块真值只供事后评分，不进入控制器决策。DP 和 ACT 网络仍只接收 RGB 与关节。',
++            'ACT 预测并缓存执行 50 步；DP 预测 16 步并执行 8 步，观测历史、损失和精度也不同。纠偏后的 ACT 清空缓存重新预测，DP 清空未执行动作但保留实际两帧观测历史。该比较评估既有组合系统，不是只改变网络架构的严格消融。',
++            '历史 ACT 加 RGB-D 的 19/20 属于另一批种子，不参与本轮配对排名。原生进程崩溃的无效尝试保留并同种子重试，不计为任务失败。当前仅一个训练种子与 20 个场景，结果不宜直接推广成算法优劣。']
++        (OUTPUT/'FOUR_WAY_COMPARISON.md').write_text('\n'.join(lines)+'\n')
++        progress('completed',completed_cases=20,summaries=summaries,report=str(OUTPUT/'FOUR_WAY_COMPARISON.md'))
++    except Exception as error:
++        progress('failed',error=str(error),traceback=traceback.format_exc());raise
++
++if __name__=='__main__':
++    if '--detach' in sys.argv:
++        GROUP.mkdir(exist_ok=True)
++        with (GROUP/'coordinator.log').open('x') as log:
++            process=subprocess.Popen([sys.executable,'-u',__file__],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++        print('Matched ACT RGB-D follow-up launched:',process.pid)
++    else:main()
+diff --git a/scripts/dp_comparison/common.py b/scripts/dp_comparison/common.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/common.py
+@@ -0,0 +1,123 @@
++"""Matched-input experiment using XPolicyLab's vendored Diffusion Policy."""
++from pathlib import Path
++import sys
++import os
++
++ROOT = Path(__file__).resolve().parents[2]
++ACT_RUN = ROOT / 'data/demo_train50_wrist_v2/repaired_train2000_20261006_191143'
++DATA = ROOT / 'XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint'
++sys.path[:0] = [str(ROOT / 'data/dp_runtime'), str(ROOT / 'XPolicyLab/policy/DP'), str(ROOT)]
++os.environ.setdefault('TORCH_HOME', str(ROOT / 'data/model_cache/torch'))
++os.environ.setdefault('MPLCONFIGDIR', '/tmp/robotwin-dp-matplotlib')
++os.environ.setdefault('ROBOTWIN_RAY_TRACING_DENOISER', 'none')
++os.environ.setdefault('OMP_NUM_THREADS', '4')
++os.environ.setdefault('MKL_NUM_THREADS', '4')
++
++import json
++import hashlib
++import numpy as np
++import torch
++import h5py
++from diffusion_policy.model.common.normalizer import LinearNormalizer
++from diffusion_policy.common.normalize_util import get_image_range_normalizer
++
++CAMERAS = ['cam_head', 'cam_right_wrist', 'cam_left_wrist']
++CONFIG = {
++    'horizon': 16, 'n_obs_steps': 2, 'n_action_steps': 8,
++    'diffusion_train_steps': 100, 'diffusion_inference_steps': 100,
++    'down_dims': [256, 512, 1024], 'image_shape': [3, 480, 640],
++    'action_dim': 14, 'seed': 0, 'epochs': 2000, 'updates_per_epoch': 40,
++    'batch_size': 1, 'lr': 1e-4, 'weight_decay': 1e-6,
++    'critical_sampling_ratio': 0.5, 'pretrained_resnet': 'IMAGENET1K_V1',
++    'precision': 'bfloat16 autocast; FP32 parameters', 'ema': True,
++    'rgbd_guard': False, 'depth_input': False,
++    'normalization': 'train-only min/max; DP native noise MSE',
++}
++
++def sha(path):
++    h = hashlib.sha256()
++    with Path(path).open('rb') as f:
++        for chunk in iter(lambda: f.read(1024 * 1024), b''):
++            h.update(chunk)
++    return h.hexdigest()
++
++def save_json(path, value):
++    path = Path(path)
++    tmp = path.with_suffix(path.suffix + '.tmp')
++    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n')
++    tmp.replace(path)
++
++def load_split():
++    split = json.loads((ROOT / 'data/demo_train50_wrist_v2/split_40_10.json').read_text())
++    train, val = split['train_episode_ids'], split['validation_episode_ids']
++    assert len(train) == 40 and len(val) == 10
++    assert set(train).isdisjoint(val) and set(train + val) == set(range(50))
++    return train, val
++
++def sequence_indices(center, length, config):
++    start = center - config['n_obs_steps'] + 1
++    return np.clip(np.arange(start, center + 1), 0, length - 1), np.clip(np.arange(start, start + config['horizon']), 0, length - 1)
++
++class Episodes:
++    def __init__(self, config=CONFIG):
++        self.config = config
++        self.train, self.val = load_split()
++        phases = json.loads((ACT_RUN / 'phase_samples.json').read_text())
++        self.groups = phases['episode_groups']
++        self.lengths, self.states, self.actions = {}, {}, {}
++        for ep in self.train + self.val:
++            with h5py.File(DATA / f'episode_{ep}.hdf5') as f:
++                assert f.attrs['action_start_offset'] == 0
++                self.states[ep] = f['observations/qpos'][()].astype(np.float32)
++                self.actions[ep] = f['action'][()].astype(np.float32)
++                self.lengths[ep] = len(self.actions[ep])
++                assert self.states[ep].shape == self.actions[ep].shape
++                assert self.actions[ep].shape[1] == config['action_dim']
++                for camera in CAMERAS:
++                    assert f[f'observations/images/{camera}'].shape == (self.lengths[ep], 480, 640, 3)
++            groups = self.groups[str(ep)]
++            assert groups and all(group for group in groups.values())
++            assert all(type(t) is int and 0 <= t < self.lengths[ep] for group in groups.values() for t in group)
++        self.rng = np.random.default_rng(config['seed'])
++
++    def normalizer(self):
++        norm = LinearNormalizer()
++        norm.fit({'action': np.concatenate([self.actions[i] for i in self.train]),
++                  'agent_pos': np.concatenate([self.states[i] for i in self.train])}, last_n_dims=1, mode='limits')
++        for cam in CAMERAS:
++            norm[cam] = get_image_range_normalizer()
++        return norm
++
++    def sample(self, ep, center=None, critical=True, device='cuda'):
++        if center is None:
++            if critical and self.rng.random() < self.config['critical_sampling_ratio']:
++                groups = list(self.groups[str(ep)].values())
++                group = groups[self.rng.integers(len(groups))]
++                center = int(self.rng.choice(group))
++            else:
++                center = int(self.rng.integers(self.lengths[ep]))
++        obs_ids, action_ids = sequence_indices(center, self.lengths[ep], self.config)
++        obs = {'agent_pos': torch.from_numpy(self.states[ep][obs_ids])[None].to(device)}
++        with h5py.File(DATA / f'episode_{ep}.hdf5') as f:
++            for cam in CAMERAS:
++                # Already-decoded RGB from the verified ACT conversion. No channel swap.
++                rgb = np.stack([f[f'observations/images/{cam}'][int(i)] for i in obs_ids])
++                rgb = np.ascontiguousarray(rgb.transpose(0, 3, 1, 2))
++                obs[cam] = torch.from_numpy(rgb).to(device=device, dtype=torch.float32)[None] / 255
++        return {'obs': obs, 'action': torch.from_numpy(self.actions[ep][action_ids])[None].to(device)}, center
++
++def build_policy(config=CONFIG, pretrained=True):
++    from torchvision.models import resnet18
++    from diffusers import DDPMScheduler
++    from diffusion_policy.model.vision.multi_image_obs_encoder import MultiImageObsEncoder
++    from diffusion_policy.policy.diffusion_unet_image_policy import DiffusionUnetImagePolicy
++    shape = {'obs': {cam: {'shape': config['image_shape'], 'type': 'rgb'} for cam in CAMERAS},
++             'action': {'shape': [config['action_dim']]}}
++    shape['obs']['agent_pos'] = {'shape': [config['action_dim']], 'type': 'low_dim'}
++    backbone = resnet18(weights=config['pretrained_resnet'] if pretrained else None)
++    backbone.fc = torch.nn.Identity()
++    encoder = MultiImageObsEncoder(shape, backbone, use_group_norm=True, share_rgb_model=False, imagenet_norm=True)
++    return DiffusionUnetImagePolicy(shape, DDPMScheduler(num_train_timesteps=config['diffusion_train_steps'], beta_schedule='squaredcos_cap_v2', clip_sample=True, prediction_type='epsilon'),
++        encoder, horizon=config['horizon'], n_action_steps=config['n_action_steps'], n_obs_steps=config['n_obs_steps'],
++        num_inference_steps=config['diffusion_inference_steps'], diffusion_step_embed_dim=128,
++        down_dims=config['down_dims'], kernel_size=5, n_groups=8, cond_predict_scale=True)
+diff --git a/scripts/dp_comparison/diagnose_dp.py b/scripts/dp_comparison/diagnose_dp.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/diagnose_dp.py
+@@ -0,0 +1,132 @@
++"""Frozen-checkpoint diagnostics on expert RGB/state, never training or tuning."""
++import argparse
++import json
++import time
++from pathlib import Path
++from common import ROOT, ACT_RUN, Episodes, build_policy, sha, save_json, torch, np
++
++RUN=ROOT/'data/dp_compare_20261007/run2000_v2'
++JOINTS=[i for i in range(14) if i not in (6,13)]
++
++def metrics(pred,target,state):
++    error=np.abs(pred-target)
++    active=np.any(target[:,[6,13]]<.8,axis=0)
++    return {'joint_mae_rad':float(error[:,JOINTS].mean()),
++        'first_joint_mae_rad':float(error[0,JOINTS].mean()),
++        'gripper_mae':float(error[:,[6,13]].mean()),
++        'gripper_binary_error':float(((pred[:,[6,13]]>.5)!=(target[:,[6,13]]>.5)).mean()),
++        'active_gripper_mae':float(error[:,[6,13]][:,active].mean()) if active.any() else None,
++        'state_hold_joint_mae_rad':float(np.abs(state[None,JOINTS]-target[:,JOINTS]).mean()),
++        'predicted_joint_motion_rad':float(np.abs(pred[:,JOINTS]-state[None,JOINTS]).mean()),
++        'expert_joint_motion_rad':float(np.abs(target[:,JOINTS]-state[None,JOINTS]).mean())}
++
++def summarize(rows):
++    keys=list(rows[0]['metrics'])
++    return {'samples':len(rows),**{k:float(np.mean([r['metrics'][k] for r in rows if r['metrics'][k] is not None]))
++        if any(r['metrics'][k] is not None for r in rows) else None for k in keys}}
++
++def main(output):
++    output.mkdir(parents=True,exist_ok=False)
++    torch.set_num_threads(4)
++    checkpoint=RUN/'training/2000.pt';digest=sha(checkpoint)
++    expected=json.loads((RUN/'experiment.json').read_text())['checkpoint_sha256']
++    assert digest==expected
++    payload=torch.load(checkpoint,map_location='cpu',weights_only=False)
++    assert payload['epoch']==2000 and payload['optimizer_steps']==80000
++    config=payload['config'];dataset=Episodes(config)
++    policy=build_policy(config,pretrained=False)
++    policy.load_state_dict(payload['ema']);policy.cuda().eval()
++    points=[]
++    events={}
++    for ep in dataset.train+dataset.val:
++        groups=dataset.groups[str(ep)]
++        tags={}
++        for name,ids in groups.items():tags.setdefault(int(ids[len(ids)//2]),[]).append(name)
++        ep_events=[]
++        for j in (6,13):
++            binary=dataset.actions[ep][:,j]>.5
++            for t in np.flatnonzero(binary[1:]!=binary[:-1])+1:
++                direction='open' if binary[t] else 'close'
++                ep_events.append({'frame':int(t),'gripper_dim':j,'direction':direction})
++                tags.setdefault(max(0,int(t)-4),[]).append(f'pre_{direction}_{j}')
++        events[str(ep)]=ep_events
++        for center,labels in sorted(tags.items()):
++            points.append((ep,center,labels))
++    metadata={'checkpoint_sha256':digest,'config':config,'status':'running','model_retrained':False,
++        'train_episodes':dataset.train,'validation_episodes':dataset.val,'samples_planned':len(points),
++        'selection':'seven phase-group midpoints plus four frames before every 0.5 gripper crossing; deduplicated',
++        'noise_seed_rule':'100000 + episode*1000 + center; repeats use +1000000*r',
++        'source_hashes':{str(p.relative_to(ROOT)):sha(p) for p in [Path(__file__),Path(__file__).with_name('common.py')]}}
++    save_json(output/'manifest.json',metadata)
++    rows=[];predictions=[];repeat_rows=[];begin=time.monotonic()
++    with (output/'points.jsonl').open('x',buffering=1) as log:
++        for idx,(ep,center,labels) in enumerate(points):
++            batch,_=dataset.sample(ep,center,critical=False)
++            seed=100000+ep*1000+center;torch.manual_seed(seed)
++            with torch.inference_mode(),torch.autocast('cuda',dtype=torch.bfloat16):
++                result=policy.predict_action(batch['obs'])
++            pred=result['action'][0].float().cpu().numpy()
++            full=result['action_pred'][0].float().cpu().numpy()
++            assert np.allclose(pred,full[config['n_obs_steps']-1:config['n_obs_steps']-1+8])
++            target=batch['action'][0,1:9].float().cpu().numpy();state=dataset.states[ep][center]
++            row={'episode':ep,'center':center,'labels':labels,'split':'train' if ep in dataset.train else 'validation',
++                'noise_seed':seed,'metrics':metrics(pred,target,state),'lag_joint_mae':{},'lag_gripper_mae':{}}
++            for lag in range(-4,5):
++                ids=np.clip(np.arange(center+lag,center+lag+8),0,dataset.lengths[ep]-1)
++                shifted=dataset.actions[ep][ids]
++                row['lag_joint_mae'][str(lag)]=float(np.abs(pred[:,JOINTS]-shifted[:,JOINTS]).mean())
++                row['lag_gripper_mae'][str(lag)]=float(np.abs(pred[:,[6,13]]-shifted[:,[6,13]]).mean())
++            row['events_in_chunk']=[]
++            for event in events[str(ep)]:
++                t=event['frame'];j=event['gripper_dim']
++                if center<=t<center+8:
++                    desired_open=event['direction']=='open'
++                    candidates=np.flatnonzero((pred[:,j]>.5)==desired_open)
++                    first=int(candidates[0]) if len(candidates) else None
++                    row['events_in_chunk'].append({**event,'expert_offset':t-center,'predicted_first_desired_offset':first,
++                        'timing_error_frames':None if first is None else first-(t-center),
++                        'predicted_before_value':float(pred[max(0,t-center-1),j]),
++                        'predicted_at_value':float(pred[t-center,j])})
++            rows.append(row);predictions.append(full);log.write(json.dumps(row)+'\n')
++            # Three extra noise draws at two critical validation phases.
++            if ep in dataset.val and any(x in labels for x in ['red_grasp','green_place']):
++                draws=[pred]
++                for repeat in range(1,4):
++                    torch.manual_seed(seed+repeat*1000000)
++                    with torch.inference_mode(),torch.autocast('cuda',dtype=torch.bfloat16):
++                        draw=policy.predict_action(batch['obs'])['action'][0].float().cpu().numpy()
++                    draws.append(draw)
++                repeat_rows.append({'episode':ep,'center':center,'labels':labels,
++                    'joint_std_rad':float(np.std(draws,axis=0)[:,JOINTS].mean()),
++                    'gripper_std':float(np.std(draws,axis=0)[:,[6,13]].mean()),
++                    'metrics_per_draw':[metrics(x,target,state) for x in draws]})
++            if (idx+1)%20==0 or idx+1==len(points):
++                save_json(output/'progress.json',{'status':'running','completed':idx+1,'total':len(points),
++                    'elapsed_seconds':time.monotonic()-begin})
++                print(f'expert points {idx+1}/{len(points)}',flush=True)
++    np.savez_compressed(output/'predictions.npz',action_pred=np.stack(predictions),
++        episodes=np.array([r['episode'] for r in rows]),centers=np.array([r['center'] for r in rows]))
++    summaries={s:summarize([r for r in rows if r['split']==s]) for s in ['train','validation']}
++    phases={s:{name:summarize([r for r in rows if r['split']==s and name in r['labels']])
++        for name in dataset.groups['0']} for s in ['train','validation']}
++    lag={s:{str(k):{'joint_mae':float(np.mean([r['lag_joint_mae'][str(k)] for r in rows if r['split']==s])),
++        'gripper_mae':float(np.mean([r['lag_gripper_mae'][str(k)] for r in rows if r['split']==s]))}
++        for k in range(-4,5)} for s in ['train','validation']}
++    alignment={}
++    for lag_frames in range(-3,4):
++        errors=[]
++        for ep in dataset.train+dataset.val:
++            ids=np.clip(np.arange(dataset.lengths[ep])+lag_frames,0,dataset.lengths[ep]-1)
++            errors.append(float(np.abs(dataset.actions[ep]-dataset.states[ep][ids]).mean()))
++        alignment[str(lag_frames)]=float(np.mean(errors))
++    final={'status':'completed','summaries':summaries,'phases':phases,'prediction_lag_sweep':lag,
++        'data_action_vs_shifted_state_mae':alignment,'gripper_events':events,'noise_repeats':repeat_rows,
++        'elapsed_seconds':time.monotonic()-begin,'checkpoint_sha256':digest,'model_retrained':False}
++    save_json(output/'results.json',final)
++    save_json(output/'progress.json',{'status':'completed','completed':len(rows),'total':len(rows)})
++    assert sha(checkpoint)==digest
++    print(json.dumps(summaries),flush=True)
++
++if __name__=='__main__':
++    parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True)
++    main(parser.parse_args().output)
+diff --git a/scripts/dp_comparison/diagnose_rollout.py b/scripts/dp_comparison/diagnose_rollout.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/diagnose_rollout.py
+@@ -0,0 +1,52 @@
++"""Replay unchanged pure DP once; record execution response for diagnosis only."""
++import argparse
++import json
++import runpy
++import sys
++import time
++from pathlib import Path
++from common import ROOT, torch, np
++from envs.stack_blocks_two import stack_blocks_two
++from visual_guard_initfix import Kinematics
++
++parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,required=True)
++parser.add_argument('--seed',type=int,default=2700000)
++cli=parser.parse_args();cli.output.mkdir(parents=True,exist_ok=False)
++log=(cli.output/'execution.jsonl').open('x',buffering=1)
++original=stack_blocks_two.take_action
++kin={}
++
++def state(robot):
++    return np.r_[robot.get_left_arm_real_jointState()[:6],robot.get_left_gripper_val(),
++        robot.get_right_arm_real_jointState()[:6],robot.get_right_gripper_val()]
++
++def measured(self,action,action_type='qpos'):
++    before=state(self.robot);command=np.asarray(action)
++    target_state=np.asarray(self.robot.get_left_arm_jointState()+self.robot.get_right_arm_jointState())
++    if not kin:
++        for side in ['left','right']:kin[side]=Kinematics(self.robot,side)
++    tcp={side:kin[side].pose(before[j:j+6])[0].tolist() for side,j in [('left',0),('right',7)]}
++    positions={c:getattr(self,attr).get_pose().p.tolist() for c,attr in [('red','block1'),('green','block2')]}
++    durations={};restores=[]
++    for side in ['left','right']:
++        planner=getattr(self.robot,side+'_mplib_planner');old=planner.TOPP
++        def wrapped(*args,_old=old,_side=side,**kwargs):
++            result=_old(*args,**kwargs)
++            durations[_side]={'interpolation_samples':int(result[1].shape[0]),'reported_duration':float(result[-1])}
++            return result
++        planner.TOPP=wrapped;restores.append((planner,old))
++    begin=time.monotonic()
++    try:result=original(self,action,action_type)
++    finally:
++        for planner,old in restores:planner.TOPP=old
++    after=state(self.robot)
++    log.write(json.dumps({'step':int(self.take_action_cnt),'before':before.tolist(),'policy_input_target_state':target_state.tolist(),'command':command.tolist(),
++        'after':after.tolist(),'tcp_before_for_diagnosis_only':tcp,'cube_before_for_diagnosis_only':positions,
++        'planner':durations,'wall_seconds':time.monotonic()-begin})+'\n')
++    return result
++
++stack_blocks_two.take_action=measured
++sys.argv=['evaluate.py','--policy','DP','--seed',str(cli.seed),'--steps','800','--output',str(cli.output),
++    '--checkpoint',str(ROOT/'data/dp_compare_20261007/run2000_v2/training/2000.pt')]
++try:runpy.run_path(str(Path(__file__).with_name('evaluate.py')),run_name='__main__')
++finally:log.close()
+diff --git a/scripts/dp_comparison/diagnose_structure.py b/scripts/dp_comparison/diagnose_structure.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/diagnose_structure.py
+@@ -0,0 +1,63 @@
++"""Read-only dataset alignment and existing closed-loop trace audit."""
++import json
++import cv2
++from common import ROOT,DATA,Episodes,sha,save_json,np,h5py,torch,CAMERAS
++from XPolicyLab.utils.process_data import pack_robot_state,get_robot_action_dim_info,unpack_robot_state,decode_image_bit
++
++RUN=ROOT/'data/dp_compare_20261007/run2000_v2'
++OUT=RUN/'diagnosis_20261008'
++data=Episodes();info=get_robot_action_dim_info('aloha_agilex')
++source=ROOT/'data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex/data'
++errors=[];frequencies=[];image_errors=[]
++for ep in range(50):
++    with h5py.File(source/f'episode_{ep:07d}.hdf5') as f:
++        raw={name:{k:v[()] for k,v in f[name].items()} for name in ['state','action']}
++        state=pack_robot_state(raw,'joint',info,source_type='dataset',state_type='state')
++        action=pack_robot_state(raw,'joint',info,source_type='dataset',state_type='action')
++        frequencies.append(int(f['additional_info/frequency'][()]))
++        center=int(data.groups[str(ep)]['red_grasp'][len(data.groups[str(ep)]['red_grasp'])//2])
++        with h5py.File(DATA/f'episode_{ep}.hdf5') as converted:
++            for camera in CAMERAS:
++                rgb=cv2.resize(decode_image_bit(f[f'vision/{camera}/colors'][center]),(640,480))
++                stored=converted[f'observations/images/{camera}'][center]
++                assert rgb.shape==stored.shape
++                image_errors.append(int(np.abs(rgb.astype(int)-stored.astype(int)).max()))
++    errors.append({'episode':ep,'raw_state_conversion_max_error':float(np.abs(state-data.states[ep]).max()),
++        'raw_action_conversion_max_error':float(np.abs(action-data.actions[ep]).max()),
++        'state_vs_action_max_error':float(np.abs(state-action).max()),
++        'action_t_vs_state_tplus1_max_error_excluding_final':float(np.abs(action[:-1]-state[1:]).max())})
++probe=data.actions[0][0:8]
++roundtrip=np.stack([pack_robot_state({'state':x},'joint',info,source_type='obs')
++    for x in unpack_robot_state(probe,'joint',info,source_type='obs')])
++assert np.array_equal(probe,roundtrip)
++closed=[]
++allrows=json.loads((RUN/'FOUR_WAY_COMPARISON.json').read_text())['rows']
++for row in allrows:
++    if row['policy'] not in ['DP','DP_RGBD']:continue
++    path=__import__('pathlib').Path(row.get('result_path',RUN/'evaluation/fresh_test'/f"DP-seed{row['seed']}"/'result.json'))
++    trace=[json.loads(x) for x in (path.parent/'trace.jsonl').read_text().splitlines()]
++    a=np.asarray([x['action'] for x in trace]);events={}
++    for j in (6,13):
++        closed_ids=np.flatnonzero(a[:,j]<=.2)
++        changes=np.flatnonzero((a[1:,j]>.5)!=(a[:-1,j]>.5))+2
++        events[str(j)]={'first_command_le_point2_step':None if not len(closed_ids) else int(closed_ids[0]+1),
++            'binary_crossing_count':len(changes),'binary_crossing_steps':changes.tolist(),
++            'min':float(a[:,j].min()),'max':float(a[:,j].max())}
++    closed.append({'policy':row['policy'],'seed':row['seed'],'success':row['success'],
++        'gripper_commands':events,'prediction_calls':row['prediction_calls'],'steps':row['steps'],
++        'mean_actions_per_prediction':row['steps']/row['prediction_calls'],
++        'cube_mode':('L' if row['initial']['red'][0]<0 else 'R')+('L' if row['initial']['green'][0]<0 else 'R')})
++ck=torch.load(RUN/'training/2000.pt',map_location='cpu',weights_only=False)
++norm=data.normalizer().state_dict()
++normalizer_error=max(float((v-ck['ema']['normalizer.'+k]).abs().max()) for k,v in norm.items())
++result={'status':'completed','raw_conversion_checks':errors,'frequency_metadata_unique':sorted(set(frequencies)),
++    'rgb_checks':len(image_errors),'rgb_conversion_max_pixel_error':max(image_errors),
++    'normalizer_recomputed_max_error':normalizer_error,
++    'pack_unpack_roundtrip_exact':True,'closed_loop_gripper_command_traces':closed,
++    'source_hashes':{p:sha(ROOT/p) for p in ['scripts/dp_comparison/evaluate.py',
++        'scripts/dp_comparison/evaluate_rgbd.py','scripts/eval_policy_xpolicylab.py','envs/_base_task.py',
++        'envs/robot/robot.py','XPolicyLab/policy/ACT/detr/process_data.py',
++        'XPolicyLab/policy/DP/diffusion_policy/policy/diffusion_unet_image_policy.py','envs/utils/pkl2hdf5.py']}}
++save_json(OUT/'structure.json',result)
++print({'raw_max_error':max(x['raw_action_conversion_max_error'] for x in errors),
++    'state_action_max_error':max(x['state_vs_action_max_error'] for x in errors),'frequency':result['frequency_metadata_unique']})
+diff --git a/scripts/dp_comparison/evaluate.py b/scripts/dp_comparison/evaluate.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/evaluate.py
+@@ -0,0 +1,158 @@
++"""Pure RGB policies; actor poses are recorded for scoring, never fed to policies."""
++import argparse
++import time
++from collections import deque
++from pathlib import Path
++from common import ROOT, ACT_RUN, CONFIG, CAMERAS, Episodes, build_policy, save_json, torch, np
++import yaml
++import cv2
++
++parser = argparse.ArgumentParser()
++parser.add_argument('--policy', choices=['DP', 'ACT'], required=True)
++parser.add_argument('--seed', type=int, required=True)
++parser.add_argument('--steps', type=int, default=800)
++parser.add_argument('--output', type=Path, required=True)
++parser.add_argument('--checkpoint', type=Path)
++parser.add_argument('--untrained-smoke', action='store_true')
++cli = parser.parse_args()
++cli.output.mkdir(parents=True, exist_ok=True)
++torch.set_num_threads(4); torch.manual_seed(0); np.random.seed(0)
++import sys
++sys.path.insert(0, str(ACT_RUN / 'evaluation50'))
++import serial_camera  # Same verified serialized RGB renderer as the ACT baseline.
++import scripts.eval_policy_xpolicylab as ev
++from envs.stack_blocks_two import stack_blocks_two
++from XPolicyLab.utils.process_data import decode_obs_images, pack_robot_state, unpack_robot_state, get_robot_action_dim_info
++from XPolicyLab.utils.process_data import get_action_dim
++import os
++os.environ['ACT_ACTION_DIM'] = str(get_action_dim('aloha_agilex'))
++
++class PureDP:
++    def __init__(self):
++        if cli.untrained_smoke:
++            assert cli.steps <= 2
++            policy = build_policy(CONFIG)
++            policy.set_normalizer(Episodes().normalizer())
++            payload = {'config':CONFIG, 'ema':policy.state_dict()}
++        else:
++            assert cli.checkpoint
++            payload = torch.load(cli.checkpoint, map_location='cpu', weights_only=False)
++            assert payload['epoch'] == 2000 and payload['optimizer_steps'] == 80000
++        self.config = payload['config']
++        assert not self.config['depth_input'] and not self.config['rgbd_guard']
++        self.policy = build_policy(self.config, pretrained=False)
++        self.policy.load_state_dict(payload['ema'])
++        self.policy.cuda().eval()
++        self.history = deque(maxlen=self.config['n_obs_steps'])
++        self.info = get_robot_action_dim_info('aloha_agilex')
++
++    def update_obs(self, obs):
++        data = {}
++        for cam in CAMERAS:
++            rgb = cv2.resize(obs['vision'][cam]['color'], (640, 480), interpolation=cv2.INTER_LINEAR)
++            data[cam] = np.ascontiguousarray(rgb.transpose(2, 0, 1), dtype=np.float32) / 255
++        data['agent_pos'] = np.asarray(pack_robot_state(obs, 'joint', self.info, source_type='obs'), dtype=np.float32)
++        self.history.append(data)
++
++    def get_action(self):
++        values = list(self.history)
++        while len(values) < self.config['n_obs_steps']: values.insert(0, values[0])
++        obs = {key: torch.from_numpy(np.stack([value[key] for value in values]))[None].cuda() for key in values[0]}
++        with torch.inference_mode(), torch.autocast('cuda', dtype=torch.bfloat16):
++            action = self.policy.predict_action(obs)['action'][0].float().cpu().numpy()
++        assert action.shape == (8, 14) and np.isfinite(action).all()
++        return unpack_robot_state(action, 'joint', self.info, source_type='obs')
++
++    def reset(self):
++        self.history.clear()
++
++if cli.policy == 'DP':
++    adapter = PureDP()
++else:
++    from XPolicyLab.policy.ACT.model import Model
++    cfg = yaml.safe_load((ACT_RUN / 'act_eval_config.yml').read_text())
++    adapter = Model(cfg)
++    assert not adapter.model.temporal_agg and adapter.model.num_queries == 50
++    adapter.model.query_frequency = 50
++
++task_ref = None
++initial = None
++final = None
++actual_seed = None
++steps = 0
++prediction_calls = 0
++prediction_seconds = 0.0
++peak_lift = {'red': 0.0, 'green': 0.0}
++final_success = False
++trace = (cli.output / 'trace.jsonl').open('x', buffering=1)
++
++def poses(task):
++    return {name: getattr(task, attr).get_pose().p.tolist() for name, attr in [('red', 'block1'), ('green', 'block2')]}
++
++original_setup = stack_blocks_two.setup_demo
++def checked_setup(self, **kwargs):
++    global task_ref, initial, actual_seed
++    if kwargs['seed'] != cli.seed:
++        # The upstream evaluator catches Exception and tries another seed. Abort
++        # outside that retry path rather than silently substitute paired scenes.
++        raise KeyboardInterrupt('Seed substitution is forbidden in paired evaluation')
++    result = original_setup(self, **kwargs)
++    task_ref = self; actual_seed = kwargs['seed']; initial = poses(self)
++    self.step_lim = cli.steps
++    return result
++stack_blocks_two.setup_demo = checked_setup
++
++original_action = stack_blocks_two.take_action
++def scored_action(self, action, action_type='qpos'):
++    global steps, final, final_success
++    self.step_lim = cli.steps
++    result = original_action(self, action, action_type)
++    steps += 1; final = poses(self); final_success = bool(self.eval_success)
++    for name in peak_lift: peak_lift[name] = max(peak_lift[name], final[name][2] - initial[name][2])
++    trace.write(__import__('json').dumps({'step': steps, 'action': np.asarray(action).tolist(), 'poses_for_scoring_only': final, 'success': final_success})+'\n')
++    return result
++stack_blocks_two.take_action = scored_action
++
++class LocalClient:
++    _robotwin_protocol = 'paired_local'
++    def call(self, func_name=None, obs=None, **kwargs):
++        global prediction_calls, prediction_seconds
++        if func_name == 'reset': adapter.reset(); return None
++        if func_name == 'update_obs':
++            decode_obs_images(obs)
++            # Strip all other modalities/metadata before handing off to either policy.
++            clean = {'vision': {cam: {'color': obs['vision'][cam]['color']} for cam in CAMERAS}, 'state': obs['state']}
++            adapter.update_obs(clean); return None
++        if func_name == 'get_action':
++            predicts = cli.policy == 'DP' or adapter.model.t % 50 == 0
++            begin = time.monotonic(); action = adapter.get_action()
++            if predicts: prediction_calls += 1; prediction_seconds += time.monotonic() - begin
++            return action
++        raise ValueError(func_name)
++    def close(self): pass
++
++ev.build_policy_client = lambda args: LocalClient()
++original_eval = ev.eval_remote_policy
++def fixed(task_name, task, args, client, st_seed, **kwargs):
++    assert not args['data_type']['depth'] and not args['data_type']['pointcloud']
++    return original_eval(task_name, task, args, client, cli.seed, **kwargs)
++ev.eval_remote_policy = fixed
++start = time.monotonic(); complete = False
++try:
++    ev.main({'bench_name':'demo_train50_wrist_v2', 'task_name':'stack_blocks_two', 'env_cfg_type':'aloha_agilex',
++        'policy_name':cli.policy, 'seed':0, 'test_num':1, 'task_config':'demo_train50_wrist_v2',
++        'expert_check':False, 'instruction_type':'seen', 'action_type':'joint', 'eval_batch':False,
++        'ckpt_name':str(cli.output.name), 'root_dir':str(ROOT), 'device_id':0})
++    complete = True
++finally:
++    trace.close()
++    valid = complete and actual_seed == cli.seed and (final_success or steps == cli.steps)
++    row = {'policy':cli.policy, 'seed':cli.seed, 'actual_seed':actual_seed, 'complete':complete,
++        'valid':valid, 'success':final_success, 'steps':steps, 'initial':initial, 'final':final,
++        'peak_lift_m':peak_lift, 'prediction_calls':prediction_calls,
++        'prediction_seconds':prediction_seconds, 'elapsed_seconds':time.monotonic()-start,
++        'rgbd_guard':False, 'depth_input':False, 'actor_truth_for_control':False,
++        'untrained_smoke':cli.untrained_smoke}
++    save_json(cli.output / 'result.json', row)
++    print('PAIRED_RESULT', row, flush=True)
++if not valid: raise RuntimeError('Invalid rollout (not a task failure); see result and log')
+diff --git a/scripts/dp_comparison/evaluate_act_ablation.py b/scripts/dp_comparison/evaluate_act_ablation.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/evaluate_act_ablation.py
+@@ -0,0 +1,20 @@
++"""Run the exact ACT harness with only release alignment ablated."""
++import json
++import runpy
++import sys
++from pathlib import Path
++from common import save_json,sha
++import visual_guard_initfix as baseline
++from visual_guard_no_release import VisualGuard
++
++# Process-local binding only: neither baseline file nor saved baseline is changed.
++baseline.VisualGuard=VisualGuard
++output=Path(sys.argv[sys.argv.index('--output')+1])
++runpy.run_path(str(Path(__file__).with_name('evaluate_act_rgbd.py')),run_name='__main__')
++row=json.loads((output/'result.json').read_text())
++row.update(policy='ACT_GRASP_ONLY',controller='visual_guard_v2_initfix minus release alignment',
++    release_alignment=False,grasp_alignment=True,
++    ablated_component='release alignment, release hold, and its associated settle/replan',
++    ablation_guard_sha256=sha(Path(__file__).with_name('visual_guard_no_release.py')))
++save_json(output/'result.json',row)
++print('ACT_ABLATION_RESULT',row,flush=True)
+diff --git a/scripts/dp_comparison/evaluate_act_rgbd.py b/scripts/dp_comparison/evaluate_act_rgbd.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/evaluate_act_rgbd.py
+@@ -0,0 +1,104 @@
++"""Existing ACT checkpoint plus the unchanged RGB-D guard on matched new seeds."""
++import argparse
++import json
++import sys
++import time
++import os
++from pathlib import Path
++from common import ROOT, ACT_RUN, CAMERAS, save_json, sha, torch, np
++import yaml
++
++parser=argparse.ArgumentParser()
++parser.add_argument('--seed',type=int,required=True)
++parser.add_argument('--steps',type=int,default=800)
++parser.add_argument('--output',type=Path,required=True)
++cli=parser.parse_args();cli.output.mkdir(parents=True,exist_ok=True)
++torch.set_num_threads(4);torch.manual_seed(0);np.random.seed(0)
++frozen=ACT_RUN/'visual_guard_test20_20261006_231054'
++assert sha(frozen/'visual_guard.py')=='577ab8a8d67c45d2c8f7dadb9b4b23a7b68e05dea9d6f393f30721038061a941'
++assert sha(frozen/'serial_camera.py')=='ababcc8c7b2858b897dd823278682b0dc4a46c4dcee0886ebfe6c141cd7f5a91'
++sys.path.insert(0,str(frozen))
++import serial_camera
++from visual_guard_initfix import VisualGuard
++assert sha(Path(__file__).with_name('visual_guard_initfix.py'))=='8d30af9a66469324a3fc133b7ea1c6de76f06ab995380b0d3651d9e516db29fc'
++import scripts.eval_policy_xpolicylab as ev
++from envs.stack_blocks_two import stack_blocks_two
++from XPolicyLab.utils.process_data import decode_obs_images,pack_robot_state,unpack_robot_state,get_action_dim
++from XPolicyLab.policy.ACT.model import Model
++
++os.environ['ACT_ACTION_DIM']=str(get_action_dim('aloha_agilex'))
++cfg=yaml.safe_load((frozen/'act_eval_config.yml').read_text())
++assert sha(Path(cfg['ckpt_dir'])/'policy_last.ckpt')=='e242a25826d8ace1d41999c6bf04b695e9a60027a31d6fbbdde897a6dd662542'
++adapter=Model(cfg)
++assert not adapter.model.temporal_agg and adapter.model.num_queries==50
++adapter.model.query_frequency=50
++guard=VisualGuard(cli.output)
++task_ref=None;initial=None;final=None;actual_seed=None
++steps=0;success=False;prediction_calls=0;prediction_seconds=0.0;corrected_steps=0;replans=0
++trace=(cli.output/'trace.jsonl').open('x',buffering=1)
++
++def poses(task):
++    return {name:getattr(task,attr).get_pose().p.tolist() for name,attr in [('red','block1'),('green','block2')]}
++original_setup=stack_blocks_two.setup_demo
++def setup(self,**kwargs):
++    global task_ref,initial,actual_seed
++    if kwargs['seed']!=cli.seed:raise KeyboardInterrupt('Forbidden seed substitution')
++    result=original_setup(self,**kwargs);task_ref=self;actual_seed=kwargs['seed'];initial=poses(self);self.step_lim=cli.steps
++    return result
++stack_blocks_two.setup_demo=setup
++original_action=stack_blocks_two.take_action
++def scored(self,action,action_type='qpos'):
++    global steps,final,success
++    self.step_lim=cli.steps
++    result=original_action(self,action,action_type)
++    steps+=1;final=poses(self);success=bool(self.eval_success)
++    trace.write(json.dumps({'step':steps,'action':np.asarray(action).tolist(),'poses_for_scoring_only':final,'success':success})+'\n')
++    return result
++stack_blocks_two.take_action=scored
++
++class LocalClient:
++    _robotwin_protocol='act_rgbd_local'
++    def call(self,func_name=None,obs=None,**kwargs):
++        global prediction_calls,prediction_seconds,corrected_steps,replans
++        if func_name=='reset':adapter.reset();return None
++        if func_name=='update_obs':
++            decode_obs_images(obs)
++            clean={'vision':{cam:{'color':obs['vision'][cam]['color']} for cam in CAMERAS},'state':obs['state']}
++            adapter.update_obs(clean);return None
++        if func_name=='get_action':
++            if guard.needs_replan:
++                adapter.reset();guard.needs_replan=False;replans+=1
++            predicts=adapter.model.t%50==0
++            begin=time.monotonic();raw=adapter.get_action()
++            if predicts:prediction_calls+=1;prediction_seconds+=time.monotonic()-begin
++            command=pack_robot_state({'state':raw[0]},'joint',adapter.robot_action_dim_info,source_type='obs')
++            corrected=guard.filter(task_ref,command)
++            corrected_steps+=int(not np.allclose(command,corrected,atol=1e-7,rtol=0))
++            assert np.isfinite(corrected).all()
++            return unpack_robot_state(np.asarray(corrected)[None],'joint',adapter.robot_action_dim_info,source_type='obs')
++        raise ValueError(func_name)
++    def close(self):pass
++
++ev.build_policy_client=lambda args:LocalClient()
++original_eval=ev.eval_remote_policy
++def fixed(task_name,task,args,client,st_seed,**kwargs):
++    return original_eval(task_name,task,args,client,cli.seed,**kwargs)
++ev.eval_remote_policy=fixed
++start=time.monotonic();complete=False
++try:
++    ev.main({'bench_name':'demo_train50_wrist_v2','task_name':'stack_blocks_two','env_cfg_type':'aloha_agilex',
++        'policy_name':'ACT','seed':0,'test_num':1,'task_config':'demo_train50_wrist_v2','expert_check':False,
++        'instruction_type':'seen','action_type':'joint','eval_batch':False,'ckpt_name':cli.output.name,
++        'root_dir':str(ROOT),'device_id':0})
++    complete=True
++finally:
++    trace.close();guard.log.close()
++    valid=complete and actual_seed==cli.seed and (success or steps==cli.steps)
++    row={'policy':'ACT_RGBD','seed':cli.seed,'actual_seed':actual_seed,'complete':complete,'valid':valid,
++        'success':success,'steps':steps,'initial':initial,'final':final,'prediction_calls':prediction_calls,
++        'prediction_seconds':prediction_seconds,'elapsed_seconds':time.monotonic()-start,
++        'corrected_steps':corrected_steps,'replans':replans,'rgbd_guard':True,'depth_input':False,
++        'guard_depth_input':True,'actor_truth_for_control':False,'controller':'visual_guard_v2_initfix; initialization only, thresholds unchanged',
++        'checkpoint':cfg['ckpt_dir'],'history_on_replan':'ACT cache reset as historical guard evaluation'}
++    save_json(cli.output/'result.json',row);print('ACT_RGBD_RESULT',row,flush=True)
++if not valid:raise RuntimeError('Invalid rollout; not a task failure')
+diff --git a/scripts/dp_comparison/evaluate_rgbd.py b/scripts/dp_comparison/evaluate_rgbd.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/evaluate_rgbd.py
+@@ -0,0 +1,116 @@
++"""Frozen DP checkpoint plus the exact historical RGB-D guard, per physical step."""
++import argparse
++import json
++import sys
++import time
++from collections import deque
++from pathlib import Path
++from common import ROOT, ACT_RUN, CAMERAS, build_policy, save_json, sha, torch, np
++import cv2
++
++parser=argparse.ArgumentParser()
++parser.add_argument('--seed',type=int,required=True)
++parser.add_argument('--steps',type=int,default=800)
++parser.add_argument('--output',type=Path,required=True)
++parser.add_argument('--checkpoint',type=Path,required=True)
++cli=parser.parse_args();cli.output.mkdir(parents=True,exist_ok=True)
++torch.set_num_threads(4);torch.manual_seed(0);np.random.seed(0)
++frozen=ACT_RUN/'visual_guard_test20_20261006_231054'
++assert sha(frozen/'visual_guard.py')=='577ab8a8d67c45d2c8f7dadb9b4b23a7b68e05dea9d6f393f30721038061a941'
++assert sha(frozen/'serial_camera.py')=='ababcc8c7b2858b897dd823278682b0dc4a46c4dcee0886ebfe6c141cd7f5a91'
++sys.path.insert(0,str(frozen))
++import serial_camera
++from visual_guard_initfix import VisualGuard
++assert sha(Path(__file__).with_name('visual_guard_initfix.py'))=='8d30af9a66469324a3fc133b7ea1c6de76f06ab995380b0d3651d9e516db29fc'
++import scripts.eval_policy_xpolicylab as ev
++from envs.stack_blocks_two import stack_blocks_two
++from XPolicyLab.utils.process_data import decode_obs_images,pack_robot_state,unpack_robot_state,get_robot_action_dim_info
++guard=VisualGuard(cli.output)
++payload=torch.load(cli.checkpoint,map_location='cpu',weights_only=False)
++assert payload['epoch']==2000 and payload['optimizer_steps']==80000
++cfg=payload['config'];policy=build_policy(cfg,pretrained=False)
++policy.load_state_dict(payload['ema']);policy.cuda().eval()
++info=get_robot_action_dim_info('aloha_agilex')
++history=deque(maxlen=cfg['n_obs_steps']);cache=deque()
++task_ref=None;initial=None;final=None;actual_seed=None
++steps=0;success=False;prediction_calls=0;prediction_seconds=0.0;corrected_steps=0;replans=0
++trace=(cli.output/'trace.jsonl').open('x',buffering=1)
++
++def poses(task):
++    return {name:getattr(task,attr).get_pose().p.tolist() for name,attr in [('red','block1'),('green','block2')]}
++
++original_setup=stack_blocks_two.setup_demo
++def setup(self,**kwargs):
++    global task_ref,initial,actual_seed
++    if kwargs['seed']!=cli.seed:raise KeyboardInterrupt('Forbidden seed substitution')
++    result=original_setup(self,**kwargs);task_ref=self;actual_seed=kwargs['seed'];initial=poses(self);self.step_lim=cli.steps
++    return result
++stack_blocks_two.setup_demo=setup
++original_action=stack_blocks_two.take_action
++def scored(self,action,action_type='qpos'):
++    global steps,final,success
++    self.step_lim=cli.steps
++    result=original_action(self,action,action_type)
++    steps+=1;final=poses(self);success=bool(self.eval_success)
++    trace.write(json.dumps({'step':steps,'action':np.asarray(action).tolist(),'poses_for_scoring_only':final,'success':success})+'\n')
++    return result
++stack_blocks_two.take_action=scored
++
++class LocalClient:
++    _robotwin_protocol='rgbd_guard_local'
++    def call(self,func_name=None,obs=None,**kwargs):
++        global prediction_calls,prediction_seconds,corrected_steps,replans
++        if func_name=='reset':history.clear();cache.clear();return None
++        if func_name=='update_obs':
++            decode_obs_images(obs)
++            data={'agent_pos':np.asarray(pack_robot_state(obs,'joint',info,source_type='obs'),dtype=np.float32)}
++            for cam in CAMERAS:
++                rgb=cv2.resize(obs['vision'][cam]['color'],(640,480),interpolation=cv2.INTER_LINEAR)
++                data[cam]=np.ascontiguousarray(rgb.transpose(2,0,1),dtype=np.float32)/255
++            history.append(data);return None
++        if func_name=='get_action':
++            if guard.needs_replan:
++                # Throw away stale predicted actions, keep the latest real RGB
++                # observations for DP's two-frame history. No retraining.
++                cache.clear();guard.needs_replan=False;replans+=1
++            if not cache:
++                values=list(history)
++                while len(values)<cfg['n_obs_steps']:values.insert(0,values[0])
++                batch={k:torch.from_numpy(np.stack([v[k] for v in values]))[None].cuda() for k in values[0]}
++                begin=time.monotonic()
++                with torch.inference_mode(),torch.autocast('cuda',dtype=torch.bfloat16):
++                    actions=policy.predict_action(batch)['action'][0].float().cpu().numpy()
++                assert actions.shape==(8,14) and np.isfinite(actions).all()
++                prediction_calls+=1;prediction_seconds+=time.monotonic()-begin;cache.extend(actions)
++            raw=cache.popleft();corrected=guard.filter(task_ref,raw)
++            corrected_steps+=int(not np.allclose(raw,corrected,atol=1e-7,rtol=0))
++            assert np.isfinite(corrected).all()
++            return unpack_robot_state(np.asarray(corrected)[None],'joint',info,source_type='obs')
++        raise ValueError(func_name)
++    def close(self):pass
++
++ev.build_policy_client=lambda args:LocalClient()
++original_eval=ev.eval_remote_policy
++def fixed(task_name,task,args,client,st_seed,**kwargs):
++    # RGB-D enters the guard through the calibrated camera capture, not the DP
++    # network. Task config remains identical to the pure-policy cohort.
++    return original_eval(task_name,task,args,client,cli.seed,**kwargs)
++ev.eval_remote_policy=fixed
++start=time.monotonic();complete=False
++try:
++    ev.main({'bench_name':'demo_train50_wrist_v2','task_name':'stack_blocks_two','env_cfg_type':'aloha_agilex',
++        'policy_name':'DP','seed':0,'test_num':1,'task_config':'demo_train50_wrist_v2','expert_check':False,
++        'instruction_type':'seen','action_type':'joint','eval_batch':False,'ckpt_name':cli.output.name,
++        'root_dir':str(ROOT),'device_id':0})
++    complete=True
++finally:
++    trace.close();guard.log.close()
++    valid=complete and actual_seed==cli.seed and (success or steps==cli.steps)
++    row={'policy':'DP_RGBD','seed':cli.seed,'actual_seed':actual_seed,'complete':complete,'valid':valid,
++        'success':success,'steps':steps,'initial':initial,'final':final,'prediction_calls':prediction_calls,
++        'prediction_seconds':prediction_seconds,'elapsed_seconds':time.monotonic()-start,
++        'corrected_steps':corrected_steps,'replans':replans,'rgbd_guard':True,'depth_input':False,
++        'guard_depth_input':True,'actor_truth_for_control':False,'controller':'visual_guard_v2_initfix; initialization only, thresholds unchanged',
++        'history_on_replan':'preserve latest actual RGB frames; clear only cached actions'}
++    save_json(cli.output/'result.json',row);print('RGBD_RESULT',row,flush=True)
++if not valid:raise RuntimeError('Invalid rollout; not a task failure')
+diff --git a/scripts/dp_comparison/launch.py b/scripts/dp_comparison/launch.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/launch.py
+@@ -0,0 +1,19 @@
++"""Launch the complete requested workflow as a detached, logged process."""
++import subprocess
++import os
++import sys
++import argparse
++from pathlib import Path
++from common import ROOT, save_json
++
++parser=argparse.ArgumentParser()
++parser.add_argument('--output', type=Path, default=ROOT/'data/dp_compare_20261007/run2000_v2')
++output=parser.parse_args().output.resolve()
++output.mkdir(parents=True,exist_ok=True)
++if (output/'launch.json').exists(): raise RuntimeError('Already launched; inspect status rather than start twice')
++with (output/'pipeline.log').open('x') as log:
++    process=subprocess.Popen([sys.executable,'-u',str(Path(__file__).parent/'pipeline.py'),'--output',str(output)],
++        cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True,
++        env={**os.environ,'PYTHONUNBUFFERED':'1','CUDA_VISIBLE_DEVICES':'0'})
++save_json(output/'launch.json',{'pid':process.pid,'output':str(output),'command':'pipeline.py --output '+str(output)})
++print('DP pipeline launched, PID',process.pid, 'output',output)
+diff --git a/scripts/dp_comparison/pipeline.py b/scripts/dp_comparison/pipeline.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/pipeline.py
+@@ -0,0 +1,105 @@
++"""Train DP, then evaluate paired pure DP/ACT without intervention or test tuning."""
++import argparse
++import datetime
++import json
++import os
++import subprocess
++import sys
++import traceback
++from pathlib import Path
++from common import ROOT, ACT_RUN, DATA, CONFIG, load_split, save_json, sha
++
++def main():
++    parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, required=True)
++    args = parser.parse_args(); output = args.output.resolve(); output.mkdir(parents=True, exist_ok=True)
++    if (output / 'experiment.json').exists(): raise RuntimeError('Choose a new output directory; do not overwrite an experiment')
++    scripts = Path(__file__).parent
++    sources = list(scripts.glob('*.py')) + list((ROOT / 'XPolicyLab/policy/DP/diffusion_policy').rglob('*.py'))
++    sources += list((ROOT / 'XPolicyLab/policy/ACT').rglob('*.py'))
++    sources += [ROOT/'envs/camera/camera.py', ROOT/'envs/_base_task.py', ROOT/'envs/stack_blocks_two.py',
++                ROOT/'scripts/eval_policy_xpolicylab.py', ROOT/'env_cfg/task_config/demo_train50_wrist_v2.yml',
++                ACT_RUN/'evaluation50/serial_camera.py', ACT_RUN/'act_eval_config.yml']
++    hashes = {str(p.relative_to(ROOT)): sha(p) for p in sources}
++    train_ids, val_ids = load_split()
++    act_dir = Path(__import__('yaml').safe_load((ACT_RUN/'act_eval_config.yml').read_text())['ckpt_dir'])
++    assert sha(act_dir/'policy_last.ckpt') == 'e242a25826d8ace1d41999c6bf04b695e9a60027a31d6fbbdde897a6dd662542'
++    dataset_files = {str(p.relative_to(ROOT)): {'bytes':p.stat().st_size, 'mtime_ns':p.stat().st_mtime_ns}
++                     for p in sorted(DATA.glob('episode_*.hdf5'))}
++    assert len(dataset_files)==50
++    manifest = {'phase':'preflight', 'created_at':datetime.datetime.now().astimezone().isoformat(),
++        'pipeline_pid':os.getpid(), 'config':CONFIG, 'train_episode_ids':train_ids, 'validation_episode_ids':val_ids,
++        'split_sha256':sha(ROOT/'data/demo_train50_wrist_v2/split_40_10.json'),
++        'critical_samples_sha256':sha(ACT_RUN/'phase_samples.json'),
++        'act_checkpoint':str(act_dir), 'act_checkpoint_sha256':sha(act_dir/'policy_last.ckpt'),
++        'dataset_files':dataset_files,
++        'development_seeds':[200000,300000,400000,500000,600000],
++        'fresh_test_seeds':list(range(2700000,4700000,100000)), 'steps_limit':800,
++        'tuning_during_evaluation':False, 'source_hashes':hashes,
++        'comparison_note':'Same demos/split/RGB resolution/state/80k updates. Native architectures, horizons, losses, normalization and precision differ. Not a controlled architecture-only ablation.'}
++    import torch, diffusers, numpy
++    manifest['runtime']={'python':sys.version, 'torch':torch.__version__, 'diffusers':diffusers.__version__,
++        'numpy':numpy.__version__, 'gpu':torch.cuda.get_device_name(0), 'cuda':torch.version.cuda}
++    def phase(value, **extra):
++        manifest.update(phase=value, updated_at=datetime.datetime.now().astimezone().isoformat(), **extra)
++        save_json(output/'experiment.json', manifest)
++    def run(command, logfile):
++        with logfile.open('x') as log:
++            subprocess.run([sys.executable, '-u', *map(str,command)], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=24*3600)
++    rows = []
++    try:
++        phase('preflight')
++        run([scripts/'train.py','--output',output/'preflight','--preflight'], output/'preflight.log')
++        assert json.loads((output/'preflight/preflight.json').read_text())['status']=='passed'
++        phase('training')
++        run([scripts/'train.py','--output',output/'training','--train'], output/'training.log')
++        metrics = [json.loads(s) for s in (output/'training/metrics.jsonl').read_text().splitlines()]
++        assert len(metrics)==2000 and metrics[-1]['optimizer_steps']==80000
++        assert json.loads((output/'training/progress.json').read_text())['status']=='completed'
++        for rel, value in hashes.items(): assert sha(ROOT/rel)==value, f'Source changed: {rel}'
++        for rel, value in dataset_files.items():
++            stat=(ROOT/rel).stat()
++            assert (stat.st_size,stat.st_mtime_ns)==(value['bytes'],value['mtime_ns']), f'Dataset changed: {rel}'
++        assert sha(act_dir/'policy_last.ckpt')==manifest['act_checkpoint_sha256']
++        phase('evaluation', training_complete=True, checkpoint_sha256=sha(output/'training/2000.pt'))
++        for cohort, seeds in [('development',manifest['development_seeds']),('fresh_test',manifest['fresh_test_seeds'])]:
++            for seed in seeds:
++                pair = []
++                # Alternate order across seeds; each simulator case is a fresh process.
++                for policy in (['ACT','DP'] if (seed//100000)%2 else ['DP','ACT']):
++                    case = output/'evaluation'/cohort/f'{policy}-seed{seed}'
++                    case.mkdir(parents=True)
++                    run([scripts/'evaluate.py','--policy',policy,'--seed',seed,'--steps',800,'--output',case,
++                         '--checkpoint',output/'training/2000.pt'],case/'eval.log')
++                    row=json.loads((case/'result.json').read_text()); row['cohort']=cohort
++                    assert row['valid']; rows.append(row); pair.append(row)
++                    save_json(output/'results.partial.json', rows)
++                    phase('evaluation', completed_cases=len(rows), latest_case={'policy':policy,'seed':seed,'success':row['success']})
++                assert pair[0]['initial']==pair[1]['initial'], f'Paired scene mismatch: {seed}'
++        summaries = {}
++        for cohort in ['development','fresh_test']:
++            summaries[cohort] = {}
++            for policy in ['ACT','DP']:
++                cases=[r for r in rows if r['cohort']==cohort and r['policy']==policy]
++                summaries[cohort][policy]={'valid_cases':len(cases), 'successes':sum(r['success'] for r in cases),
++                    'success_rate':sum(r['success'] for r in cases)/len(cases),
++                    'mean_steps':sum(r['steps'] for r in cases)/len(cases),
++                    'mean_prediction_seconds':sum(r['prediction_seconds'] for r in cases)/sum(r['prediction_calls'] for r in cases)}
++        paired={}
++        for seed in manifest['fresh_test_seeds']:
++            pair={r['policy']:r for r in rows if r['cohort']=='fresh_test' and r['seed']==seed}
++            key=f"ACT_{int(pair['ACT']['success'])}_DP_{int(pair['DP']['success'])}"
++            paired[key]=paired.get(key,0)+1
++        save_json(output/'comparison.json', {'status':'completed','summaries':summaries,'paired_outcomes':paired,'rows':rows,'limitations':manifest['comparison_note']})
++        lines=['# Pure DP vs pure ACT comparison','', 'Both policies: 50 demos, 40/10 split, RGB + joints, no depth or RGB-D guard.','',
++               '| Cohort | Policy | Success | Mean steps | Mean prediction seconds |','| --- | --- | --- | --- | --- |']
++        for cohort, policies in summaries.items():
++            for policy, result in policies.items():
++                lines.append(f"| {cohort} | {policy} | {result['successes']}/{result['valid_cases']} | {result['mean_steps']:.1f} | {result['mean_prediction_seconds']:.4f} |")
++        lines += ['', 'This is a single training-seed comparison; native model/loss/horizon differences remain.', 'Historical 95% RGB-D-assisted result is not part of the pure-policy ranking.']
++        (output/'REPORT.md').write_text('\n'.join(lines)+'\n')
++        phase('completed', completed_cases=len(rows), summaries=summaries)
++    except Exception as error:
++        phase('failed', failed_stage=manifest['phase'], error=str(error), traceback=traceback.format_exc())
++        raise
++
++if __name__ == '__main__': main()
+diff --git a/scripts/dp_comparison/report_comparison.py b/scripts/dp_comparison/report_comparison.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/report_comparison.py
+@@ -0,0 +1,89 @@
++"""Evidence-based Chinese reports, distinguishing pose proxies from grasp success."""
++import json
++from pathlib import Path
++import numpy as np
++from common import ROOT,save_json
++
++OUTPUT=ROOT/'data/dp_compare_20261007/run2000_v2'
++
++def longest(values):
++    run=best=0
++    for value in values:
++        run=run+1 if value else 0;best=max(best,run)
++    return best
++
++def diagnostic(row):
++    source=Path(row.get('result_path',OUTPUT/'evaluation'/row['cohort']/f"{row['policy']}-seed{row['seed']}"/'result.json'))
++    trace=[json.loads(line) for line in (source.parent/'trace.jsonl').read_text().splitlines()]
++    assert len(trace)==row['steps']
++    result={}
++    for color in ['red','green']:
++        positions=np.asarray([r['poses_for_scoring_only'][color] for r in trace])
++        lift=positions[:,2]-row['initial'][color][2]
++        result[color+'_max_lift_cm']=float(lift.max()*100)
++        result[color+'_sustained_lift_proxy']=longest(lift>.025)>=5
++    red=np.asarray([r['poses_for_scoring_only']['red'] for r in trace])
++    green=np.asarray([r['poses_for_scoring_only']['green'] for r in trace])
++    result['red_base_geometry_proxy']=bool(result['red_sustained_lift_proxy'] and
++        np.any((np.abs(red[:,0])<.025)&(np.abs(red[:,1]+.13)<.025)&(np.abs(red[:,2]-row['initial']['red'][2])<.012)))
++    error=green-red-np.array([0,0,.05])
++    result['sustained_stack_geometry_proxy']=longest(np.all(np.abs(error)<[.025,.025,.012],axis=1))>=5
++    result['final_stack_xy_error_cm']=float(np.linalg.norm(error[-1,:2])*100)
++    result['final_stack_z_error_cm']=float(abs(error[-1,2])*100)
++    result['mode']=('L' if row['initial']['red'][0]<0 else 'R')+('L' if row['initial']['green'][0]<0 else 'R')
++    return result
++
++def generate(include_rgbd=False):
++    comparison=json.loads((OUTPUT/'comparison.json').read_text());assert comparison['status']=='completed'
++    rows=comparison['rows']
++    if include_rgbd:
++        extra=json.loads((OUTPUT/'rgbd/results.json').read_text());assert extra['status']=='completed'
++        rows=rows+extra['rows']
++    augmented=[{**row,'diagnostic':diagnostic(row)} for row in rows]
++    summaries={}
++    for cohort in ['development','fresh_test']:
++        summaries[cohort]={}
++        for policy in ['ACT','DP','DP_RGBD']:
++            cases=[r for r in augmented if r['cohort']==cohort and r['policy']==policy]
++            if not cases:continue
++            summaries[cohort][policy]={
++                'valid_cases':len(cases),'successes':sum(r['success'] for r in cases),
++                **{key:sum(r['diagnostic'][key] for r in cases) for key in
++                   ['red_sustained_lift_proxy','green_sustained_lift_proxy','red_base_geometry_proxy','sustained_stack_geometry_proxy']},
++                'median_final_xy_cm':float(np.median([r['diagnostic']['final_stack_xy_error_cm'] for r in cases])),
++                'mean_model_seconds_per_action':sum(r['prediction_seconds'] for r in cases)/sum(r['steps'] for r in cases)}
++    suffix='RGBD_COMPARISON' if include_rgbd else 'PURE_COMPARISON'
++    save_json(OUTPUT/(suffix+'.json'),{'status':'completed','summaries':summaries,'rows':augmented})
++    lines=['# 堆叠方块 DP 与 ACT 对照报告','',
++        '本报告比较同一批 50 条轨迹和固定 40/10 划分下训练 2000 轮的纯 DP 与纯 ACT。两者均使用三路 640×480 RGB 和关节输入，关闭深度输入及 RGB-D 纠偏，每个场景最多执行 800 步。',
++        '', '## 官方成功率','', '| 场景 | 策略 | 成功数 | 有效场景数 |','| --- | --- | --- | --- |']
++    for cohort,policies in summaries.items():
++        for policy,s in policies.items():lines.append(f"| {cohort} | {policy} | {s['successes']} | {s['valid_cases']} |")
++    lines+=['','## 行为阶段与计算开销','',
++        '下面的位姿指标只用于事后评分，不进入策略决策。持续抬升定义为相对初始高度增加超过 2.5 cm 且连续至少 5 个动作步；它不是经过夹持验证的抓取成功。红块底座位置指标要求此前出现持续抬升，且某时刻进入底座位置附近。堆叠几何指标仅检查相对位置连续 5 步，不检查夹爪打开或长期稳定。',
++        '', '| 场景 | 策略 | 红块持续抬升 | 红块底座位置 | 绿块持续抬升 | 持续堆叠几何 | 最终 XY 误差中位数 cm | 推理秒数每动作步 |',
++        '| --- | --- | --- | --- | --- | --- | --- | --- |']
++    for cohort,policies in summaries.items():
++        for policy,s in policies.items():lines.append(f"| {cohort} | {policy} | {s['red_sustained_lift_proxy']}/{s['valid_cases']} | {s['red_base_geometry_proxy']}/{s['valid_cases']} | {s['green_sustained_lift_proxy']}/{s['valid_cases']} | {s['sustained_stack_geometry_proxy']}/{s['valid_cases']} | {s['median_final_xy_cm']:.2f} | {s['mean_model_seconds_per_action']:.4f} |")
++    pure=[summaries['fresh_test'][p] for p in ['ACT','DP']]
++    if all(s['successes']==0 for s in pure):
++        lines+=['','## 结论','', '纯 DP 与纯 ACT 在本轮新场景上的官方成功率都为零，出现了成功率指标的地板效应。结果能够说明当前两套训练与部署方案都没有达到可用的自主堆叠能力，但不能据此宣称两种算法性能等价，或判定 DP 不如 ACT。行为阶段指标帮助定位卡在哪一步，也不能代替任务成功率。']
++    else:
++        lines+=['','## 结论','', '官方成功率与行为阶段指标应一起解释。当前是单个训练种子的有限场景比较，不能将观察到的差异直接推广成算法优劣。']
++    lines+=['', '训练损失是各自目标上的拟合指标，不等于闭环成功率；DP 噪声 MSE 与 ACT 重建损失不能直接横向比较。数据量与覆盖、部署时分布偏移、动作执行频率和关键接触阶段误差都可能影响结果，本轮尚未将这些原因单独隔离。',
++        '', '## 比较边界','',
++        '两者均为 80000 次更新，但模型、损失、归一化和精度不同。DP 使用 EMA、两帧观测、预测 16 步并执行 8 步；ACT 使用单帧观测、预测并缓存执行 50 步。因此这是现有方案的对照，不是只改变模型架构的严格消融。',
++        '本轮新场景种子为 2700000 至 4600000。原生进程崩溃的无效尝试保留，并以冻结模型和相同种子重试，不计作任务失败；模型及纠偏阈值未按测试结果修改。',
++        '历史 ACT 加 RGB-D 的 19/20 使用另一批种子，仅作历史参照，不能与本轮成功率作直接配对排名。']
++    if include_rgbd:
++        lines+=['','## RGB-D 对照条件','',
++            'DP 加 RGB-D 复用同一个 2000 轮 DP checkpoint，不重新训练。深度和相机标定只进入 visual_guard_v2_initfix：仅修复释放分支缺少运动学初始化的缺陷，所有阈值不变，修复前结果单独保留而不混入本轮统计。DP 网络仍仅接收 RGB 与关节。纠偏逐动作步执行，纠偏后的重新预测清空未执行动作缓存，但保留最新实际 RGB 观测历史。',
++            '这一组测试的是组合控制系统的收益，不是 DP 学会了利用深度，也不是纯 DP 泛化能力的提升。已知红绿颜色和 5 cm 方块尺寸仍是额外先验。']
++    else:
++        lines+=['','## 下一组对照','', '下一组使用同一个 DP checkpoint 和同一批 20 个新场景，加入已有的冻结 RGB-D 校正模块，不修改模型或校正阈值。其成绩应与本轮纯 DP 配对比较，用于判断额外几何纠偏能补足哪些阶段。']
++    (OUTPUT/(suffix+'.md')).write_text('\n'.join(lines)+'\n')
++    return summaries
++
++if __name__=='__main__':
++    import sys
++    print(generate('--rgbd' in sys.argv))
+diff --git a/scripts/dp_comparison/resume_evaluation.py b/scripts/dp_comparison/resume_evaluation.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/resume_evaluation.py
+@@ -0,0 +1,112 @@
++"""Resume immutable paired evaluation; retry native crashes, never task failures."""
++import datetime
++import json
++import os
++from pathlib import Path
++import signal
++import subprocess
++import sys
++import traceback
++from common import ROOT, sha, save_json
++
++OUTPUT = ROOT/'data/dp_compare_20261007/run2000_v2'
++
++def main():
++    manifest = json.loads((OUTPUT/'experiment.json').read_text())
++    state = {'status':'verifying', 'pid':os.getpid(), 'started_at':datetime.datetime.now().astimezone().isoformat(),
++             'original_failure':manifest.get('error'), 'source_sha256':sha(__file__), 'retries':[]}
++    def progress(status, **extra):
++        state.update(status=status, updated_at=datetime.datetime.now().astimezone().isoformat(), **extra)
++        save_json(OUTPUT/'evaluation_resume.json',state)
++    try:
++        progress('verifying')
++        assert manifest['training_complete']
++        metrics=[json.loads(line) for line in (OUTPUT/'training/metrics.jsonl').read_text().splitlines()]
++        assert len(metrics)==2000 and metrics[-1]['optimizer_steps']==80000
++        for rel, digest in manifest['source_hashes'].items():
++            assert sha(ROOT/rel)==digest, f'Frozen source changed: {rel}'
++        assert sha(OUTPUT/'training/2000.pt')==manifest['checkpoint_sha256']
++        assert sha(Path(manifest['act_checkpoint'])/'policy_last.ckpt')==manifest['act_checkpoint_sha256']
++        for rel, info in manifest['dataset_files'].items():
++            stat=(ROOT/rel).stat()
++            assert (stat.st_size,stat.st_mtime_ns)==(info['bytes'],info['mtime_ns'])
++        rows=json.loads((OUTPUT/'results.partial.json').read_text())
++        saved={(r['cohort'],r['policy'],r['seed']):r for r in rows}
++        assert len(saved)==len(rows)
++        for row in rows:
++            assert row['valid'] and row['complete'] and row['actual_seed']==row['seed']
++            assert not row['depth_input'] and not row['rgbd_guard']
++        progress('evaluation',completed_cases=len(rows),verification='passed')
++        for cohort,seeds in [('development',manifest['development_seeds']),('fresh_test',manifest['fresh_test_seeds'])]:
++            for seed in seeds:
++                pair=[]
++                for policy in (['ACT','DP'] if (seed//100000)%2 else ['DP','ACT']):
++                    key=(cohort,policy,seed)
++                    if key in saved:
++                        pair.append(saved[key]); continue
++                    original=OUTPUT/'evaluation'/cohort/f'{policy}-seed{seed}'
++                    for attempt in range(1,4):
++                        case=original.parent/f'{original.name}-resume{attempt}'
++                        case.mkdir(exist_ok=False)
++                        command=[sys.executable,'-u',str(ROOT/'scripts/dp_comparison/evaluate.py'),
++                            '--policy',policy,'--seed',str(seed),'--steps','800','--output',str(case),
++                            '--checkpoint',str(OUTPUT/'training/2000.pt')]
++                        progress('evaluation',current_case={'policy':policy,'seed':seed,'attempt':attempt},completed_cases=len(rows))
++                        with (case/'eval.log').open('x') as log:
++                            result=subprocess.run(command,cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,timeout=1800)
++                        if result.returncode==0:
++                            row=json.loads((case/'result.json').read_text())
++                            assert row['valid'] and row['actual_seed']==seed
++                            row.update(cohort=cohort,result_path=str(case/'result.json'))
++                            rows.append(row);saved[key]=row;pair.append(row)
++                            save_json(OUTPUT/'results.partial.json',rows)
++                            break
++                        state['retries'].append({'policy':policy,'seed':seed,'attempt':attempt,'exit_code':result.returncode,'log':str(case/'eval.log')})
++                        progress('evaluation')
++                        # Only a native process crash is retryable, with the same
++                        # immutable policy, seed, action budget and evaluator.
++                        if result.returncode not in [-signal.SIGSEGV,-signal.SIGABRT]:
++                            raise RuntimeError(f'Non-native evaluation error: {policy} seed {seed}, return {result.returncode}')
++                    else:
++                        raise RuntimeError(f'Three native crashes: {policy} seed {seed}')
++                assert pair[0]['initial']==pair[1]['initial'], f'Paired scene mismatch: {seed}'
++                progress('evaluation',completed_cases=len(rows))
++        assert len(rows)==50
++        summaries={}
++        for cohort in ['development','fresh_test']:
++            summaries[cohort]={}
++            for policy in ['ACT','DP']:
++                cases=[r for r in rows if r['cohort']==cohort and r['policy']==policy]
++                summaries[cohort][policy]={'valid_cases':len(cases),'successes':sum(r['success'] for r in cases),
++                    'success_rate':sum(r['success'] for r in cases)/len(cases),
++                    'mean_steps':sum(r['steps'] for r in cases)/len(cases),
++                    'mean_prediction_seconds':sum(r['prediction_seconds'] for r in cases)/sum(r['prediction_calls'] for r in cases)}
++        paired={}
++        for seed in manifest['fresh_test_seeds']:
++            pair={r['policy']:r for r in rows if r['cohort']=='fresh_test' and r['seed']==seed}
++            label=f"ACT_{int(pair['ACT']['success'])}_DP_{int(pair['DP']['success'])}"
++            paired[label]=paired.get(label,0)+1
++        save_json(OUTPUT/'comparison.json',{'status':'completed','summaries':summaries,'paired_outcomes':paired,
++            'rows':rows,'limitations':manifest['comparison_note'],'native_crash_recovery':state})
++        report=['# Pure DP vs pure ACT comparison','','Both: 50 demos, same 40/10 split, 2000 epochs / 80000 updates, three RGB cameras and joints. No depth or RGB-D guard.','',
++            '| Cohort | Policy | Success | Mean steps | Mean prediction time (s) |','| --- | --- | --- | --- | --- |']
++        for cohort,policies in summaries.items():
++            for policy,info in policies.items():
++                report.append(f"| {cohort} | {policy} | {info['successes']}/{info['valid_cases']} | {info['mean_steps']:.1f} | {info['mean_prediction_seconds']:.4f} |")
++        report+=['',manifest['comparison_note'],'Single training seed; 20 fresh paired scenes. Historical RGB-D-assisted 95% is not a pure-policy score.',
++            'Native crash attempts were preserved and excluded from task-success denominators. Same-seed retries used unchanged frozen checkpoints and evaluator.']
++        (OUTPUT/'REPORT.md').write_text('\n'.join(report)+'\n')
++        manifest.update(phase='completed',completed_cases=50,summaries=summaries,evaluation_recovery=str(OUTPUT/'evaluation_resume.json'),
++            updated_at=datetime.datetime.now().astimezone().isoformat())
++        save_json(OUTPUT/'experiment.json',manifest)
++        progress('completed',completed_cases=50,summaries=summaries)
++    except Exception as error:
++        progress('failed',error=str(error),traceback=traceback.format_exc()); raise
++
++if __name__=='__main__':
++    if '--detach' in sys.argv:
++        with (OUTPUT/'resume.log').open('x') as log:
++            process=subprocess.Popen([sys.executable,'-u',__file__],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++        print('Evaluation recovery launched:',process.pid)
++    else:
++        main()
+diff --git a/scripts/dp_comparison/rgbd_followup.py b/scripts/dp_comparison/rgbd_followup.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/rgbd_followup.py
+@@ -0,0 +1,94 @@
++"""Wait for pure comparison, write report, then run the authorized DP RGB-D group."""
++import datetime
++import json
++import os
++import signal
++import subprocess
++import sys
++import time
++import traceback
++from pathlib import Path
++from common import ROOT,ACT_RUN,sha,save_json
++from report_comparison import generate
++
++OUTPUT=ROOT/'data/dp_compare_20261007/run2000_v2'
++GROUP=OUTPUT/'rgbd'
++
++def main():
++    GROUP.mkdir(exist_ok=True)
++    state={'status':'waiting_for_pure_comparison','pid':os.getpid(),
++        'started_at':datetime.datetime.now().astimezone().isoformat(),'completed_cases':0,'retries':[],
++        'tuning_during_evaluation':False,'model_retrained':False}
++    scripts=Path(__file__).parent
++    sources=[scripts/'visual_guard_initfix.py',scripts/'evaluate_rgbd.py',scripts/'report_comparison.py',scripts/'rgbd_followup.py',scripts/'common.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/visual_guard.py',
++        ACT_RUN/'visual_guard_test20_20261006_231054/serial_camera.py']
++    state['source_hashes']={str(p.relative_to(ROOT)):sha(p) for p in sources}
++    def progress(status,**extra):
++        state.update(status=status,updated_at=datetime.datetime.now().astimezone().isoformat(),**extra)
++        save_json(GROUP/'progress.json',state)
++    def run_case(seed,steps,path):
++        path.mkdir(parents=True,exist_ok=False)
++        with (path/'eval.log').open('x') as log:
++            return subprocess.run([sys.executable,'-u',str(scripts/'evaluate_rgbd.py'),'--seed',str(seed),
++                '--steps',str(steps),'--output',str(path),'--checkpoint',str(OUTPUT/'training/2000.pt')],
++                cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,timeout=1800)
++    try:
++        progress('waiting_for_pure_comparison')
++        deadline=time.monotonic()+3*3600
++        while not (OUTPUT/'comparison.json').exists():
++            recovery=json.loads((OUTPUT/'evaluation_resume.json').read_text())
++            if recovery['status']=='failed':raise RuntimeError('Pure-policy evaluation recovery failed: '+recovery.get('error',''))
++            if time.monotonic()>deadline:raise RuntimeError('Pure comparison did not finish within three hours')
++            time.sleep(30)
++        comparison=json.loads((OUTPUT/'comparison.json').read_text())
++        assert comparison['status']=='completed' and len(comparison['rows'])==50
++        pure_summaries=json.loads((OUTPUT/'PURE_COMPARISON.json').read_text())['summaries']
++        progress('pure_report_ready',pure_report=str(OUTPUT/'PURE_COMPARISON.md'),pure_summaries=pure_summaries)
++        manifest=json.loads((OUTPUT/'experiment.json').read_text())
++        assert sha(OUTPUT/'training/2000.pt')==manifest['checkpoint_sha256']
++        state['checkpoint_sha256']=manifest['checkpoint_sha256']
++        state['seeds']=manifest['fresh_test_seeds'];state['steps_limit']=800
++        save_json(GROUP/'frozen_manifest.json',state)
++        # Wiring smoke is not a task-success measurement or tuning opportunity.
++        progress('rgbd_wiring_smoke')
++        smoke=run_case(200000,2,GROUP/'wiring-smoke')
++        assert smoke.returncode==0,'RGB-D wiring smoke failed'
++        assert json.loads((GROUP/'wiring-smoke/result.json').read_text())['valid']
++        rows=[]
++        for seed in state['seeds']:
++            for rel,digest in state['source_hashes'].items():assert sha(ROOT/rel)==digest,f'Frozen source changed: {rel}'
++            for attempt in range(1,4):
++                case=GROUP/f'DP_RGBD-seed{seed}-attempt{attempt}'
++                progress('evaluating_rgbd',current_seed=seed,current_attempt=attempt,completed_cases=len(rows))
++                result=run_case(seed,800,case)
++                if result.returncode==0:
++                    row=json.loads((case/'result.json').read_text())
++                    assert row['valid'] and row['actual_seed']==seed
++                    pure=next(r for r in comparison['rows'] if r['policy']=='DP' and r['cohort']=='fresh_test' and r['seed']==seed)
++                    assert row['initial']==pure['initial'],'DP/DP-RGBD initial scene mismatch'
++                    row.update(cohort='fresh_test',result_path=str(case/'result.json'))
++                    rows.append(row)
++                    save_json(GROUP/'results.partial.json',rows)
++                    progress('evaluating_rgbd',completed_cases=len(rows),successes=sum(r['success'] for r in rows))
++                    break
++                state['retries'].append({'seed':seed,'attempt':attempt,'returncode':result.returncode,'log':str(case/'eval.log')})
++                progress('evaluating_rgbd')
++                if result.returncode not in [-signal.SIGSEGV,-signal.SIGABRT]:
++                    raise RuntimeError(f'RGB-D evaluation error seed {seed}: {result.returncode}')
++            else:raise RuntimeError(f'Three native crashes at seed {seed}')
++        assert len(rows)==20
++        save_json(GROUP/'results.json',{'status':'completed','successes':sum(r['success'] for r in rows),
++            'valid_cases':20,'success_rate':sum(r['success'] for r in rows)/20,'rows':rows})
++        summaries=generate(include_rgbd=True)
++        progress('completed',completed_cases=20,summaries=summaries,report=str(OUTPUT/'RGBD_COMPARISON.md'))
++    except Exception as error:
++        progress('failed',error=str(error),traceback=traceback.format_exc());raise
++
++if __name__=='__main__':
++    if '--detach' in sys.argv:
++        GROUP.mkdir(exist_ok=True)
++        with (GROUP/'coordinator.log').open('x') as log:
++            process=subprocess.Popen([sys.executable,'-u',__file__],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
++        print('Pure report then DP RGB-D workflow launched:',process.pid)
++    else:main()
+diff --git a/scripts/dp_comparison/summarize_diagnosis.py b/scripts/dp_comparison/summarize_diagnosis.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/summarize_diagnosis.py
+@@ -0,0 +1,51 @@
++"""Aggregate diagnostic predictions and execution measurements without tuning."""
++import json
++from pathlib import Path
++from common import ROOT,Episodes,save_json,np
++
++OUT=ROOT/'data/dp_compare_20261007/run2000_v2/diagnosis_20261008'
++result=json.loads((OUT/'results.json').read_text())
++rows=[json.loads(x) for x in (OUT/'points.jsonl').read_text().splitlines()]
++pred=np.load(OUT/'predictions.npz')['action_pred'][:,1:9]
++data=Episodes();joints=[j for j in range(14) if j not in (6,13)]
++summary={}
++for split in ['train','validation']:
++    ids=[i for i,r in enumerate(rows) if r['split']==split]
++    targets=np.stack([data.actions[rows[i]['episode']][np.clip(np.arange(rows[i]['center'],rows[i]['center']+8),0,data.lengths[rows[i]['episode']]-1)] for i in ids])
++    states=np.stack([data.states[rows[i]['episode']][rows[i]['center']] for i in ids])
++    err=np.abs(pred[ids]-targets);hold=np.abs(states[:,None]-targets)
++    events=[e for i in ids for e in rows[i]['events_in_chunk']]
++    summary[split]={'joint_mae_by_chunk_offset_rad':err[:,:,joints].mean(axis=(0,2)).tolist(),
++        'hold_joint_mae_by_chunk_offset_rad':hold[:,:,joints].mean(axis=(0,2)).tolist(),
++        'gripper_mae_by_chunk_offset':err[:,:,[6,13]].mean(axis=(0,2)).tolist(),
++        'events_in_chunks':len(events),'missing_desired_binary_state':sum(e['timing_error_frames'] is None for e in events),
++        'early':sum(e['timing_error_frames'] is not None and e['timing_error_frames']<0 for e in events),
++        'on_time':sum(e['timing_error_frames']==0 for e in events),
++        'late':sum(e['timing_error_frames'] is not None and e['timing_error_frames']>0 for e in events),
++        'median_timing_error_present_frames':float(np.median([e['timing_error_frames'] for e in events if e['timing_error_frames'] is not None]))}
++repeats=result['noise_repeats']
++summary['noise_repeats']={'observations':len(repeats),'draws_each':4,
++    'joint_std_mean_rad':float(np.mean([x['joint_std_rad'] for x in repeats])),
++    'gripper_std_mean':float(np.mean([x['gripper_std'] for x in repeats]))}
++execution=OUT/'closed_loop_seed2700000/execution.jsonl'
++if execution.exists():
++    r=[json.loads(x) for x in execution.read_text().splitlines()]
++    before=np.asarray([x['before'] for x in r]);after=np.asarray([x['after'] for x in r]);commands=np.asarray([x['command'] for x in r])
++    inputs=np.asarray([x['policy_input_target_state'] for x in r]);close_events=[]
++    for j,side in [(6,'left'),(13,'right')]:
++        for i in np.flatnonzero((commands[1:,j]<=.2)&(commands[:-1,j]>.2))+1:
++            step=r[i];tcp=np.asarray(step['tcp_before_for_diagnosis_only'][side]);red=np.asarray(step['cube_before_for_diagnosis_only']['red'])
++            close_events.append({'step':step['step'],'side':side,'tcp_to_red_center_cm':float(np.linalg.norm(tcp-red)*100),
++                'tcp_to_red_approach_target_cm':float(np.linalg.norm(tcp-red-np.array([0,0,.0106]))*100)})
++    lengths=[x['planner'][side]['interpolation_samples'] for x in r for side in x['planner']]
++    durations=[x['planner'][side]['reported_duration'] for x in r for side in x['planner']]
++    summary['execution']={'actions':len(r),'before_command_joint_mae_rad':float(np.abs(before[:,joints]-commands[:,joints]).mean()),
++        'after_command_joint_mae_rad':float(np.abs(after[:,joints]-commands[:,joints]).mean()),
++        'input_target_vs_actual_joint_mae_rad':float(np.abs(inputs[:,joints]-before[:,joints]).mean()),
++        'after_command_gripper_mae':float(np.abs(after[:,[6,13]]-commands[:,[6,13]]).mean()),
++        'planner_samples_quantiles':np.quantile(lengths,[0,.5,.9,1]).tolist(),
++        'planner_reported_duration_quantiles_seconds':np.quantile(durations,[0,.5,.9,1]).tolist(),
++        'closed_command_events_for_diagnosis_only':close_events,
++        'replay_result':json.loads((execution.parent/'result.json').read_text())}
++save_json(OUT/'analysis.json',summary)
++print(json.dumps(summary,ensure_ascii=False))
+diff --git a/scripts/dp_comparison/sync_final_reports.py b/scripts/dp_comparison/sync_final_reports.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/sync_final_reports.py
+@@ -0,0 +1,69 @@
++"""Synchronize final four-way reports without changing individual trial results."""
++import json
++from common import ROOT, save_json
++from report_comparison import diagnostic
++
++RUN=ROOT/'data/dp_compare_20261007/run2000_v2'
++
++def main():
++    pure=json.loads((RUN/'comparison.json').read_text())
++    groups=[json.loads((RUN/g/'results.json').read_text()) for g in ['act_rgbd','rgbd']]
++    assert all(g['status']=='completed' and len(g['rows'])==20 for g in groups)
++    rows=[r for r in pure['rows'] if r['cohort']=='fresh_test']+groups[0]['rows']+groups[1]['rows']
++    seeds=list(range(2700000,4700000,100000));summaries={}
++    for seed in seeds:
++        cases=[r for r in rows if r['seed']==seed]
++        assert len(cases)==4 and all(r['valid'] and r['initial']==cases[0]['initial'] for r in cases)
++    for policy in ['ACT','DP','ACT_RGBD','DP_RGBD']:
++        cases=[r for r in rows if r['policy']==policy]
++        assert sorted(r['seed'] for r in cases)==seeds
++        ds=[diagnostic(r) for r in cases]
++        summaries[policy]={'successes':sum(r['success'] for r in cases),'valid_cases':20,
++            'success_rate':sum(r['success'] for r in cases)/20,
++            'red_sustained_lift_proxy':sum(d['red_sustained_lift_proxy'] for d in ds),
++            'green_sustained_lift_proxy':sum(d['green_sustained_lift_proxy'] for d in ds),
++            'mean_steps':sum(r['steps'] for r in cases)/20,
++            'corrected_steps':sum(r.get('corrected_steps',0) for r in cases),
++            'intervened_cases':sum(r.get('corrected_steps',0)>0 for r in cases),
++            'replans':sum(r.get('replans',0) for r in cases)}
++    pairs={}
++    for seed in seeds:
++        a=next(r for r in rows if r['seed']==seed and r['policy']=='ACT_RGBD')
++        d=next(r for r in rows if r['seed']==seed and r['policy']=='DP_RGBD')
++        key=f"ACT_RGBD_{int(a['success'])}_DP_RGBD_{int(d['success'])}"
++        pairs[key]=pairs.get(key,0)+1
++    original=json.loads((RUN/'FOUR_WAY_COMPARISON.json').read_text())
++    assert all(original['summaries'][p]['successes']==s['successes'] for p,s in summaries.items())
++    result={**original,'status':'completed','summaries':summaries,'rgbd_paired_outcomes':pairs,'rows':rows,
++        'seeds':seeds,'steps_limit':800,'report_scope':'final four-way fresh-test cohort',
++        'pure_development_summary':json.loads((RUN/'PURE_COMPARISON.json').read_text())['summaries']['development']}
++    save_json(RUN/'FOUR_WAY_COMPARISON.json',result)
++    save_json(RUN/'RGBD_COMPARISON.json',result)
++    lines=['# 堆叠方块 ACT 与 DP 及 RGB-D 最终对照报告','',
++        '四组测试已全部完成。同一批 20 个场景中，纯 ACT 成功 3/20，纯 DP 为 0/20，ACT 加 RGB-D 为 19/20，DP 加 RGB-D 为 3/20。当前 ACT 加几何纠偏的组合系统明显更可靠，但这些结果不能推广为算法排名。','',
++        '## 同场景最终结果','',
++        '| 策略 | 官方成功率 | 红块持续抬升代理 | 绿块持续抬升代理 | 平均动作步数 | 改写动作步数 | 介入场景数 | 重新预测次数 |',
++        '| --- | --- | --- | --- | --- | --- | --- | --- |']
++    for p,s in summaries.items():
++        lines.append(f"| {p} | {s['successes']}/20（{s['success_rate']:.0%}） | {s['red_sustained_lift_proxy']}/20 | {s['green_sustained_lift_proxy']}/20 | {s['mean_steps']:.1f} | {s['corrected_steps']} | {s['intervened_cases']}/20 | {s['replans']} |")
++    lines+=['','## RGB-D 组的配对结果','',
++        '3 场两组都成功，16 场仅 ACT 加 RGB-D 成功，1 场两组都失败，没有仅 DP 加 RGB-D 成功的场景。ACT 加 RGB-D 唯一失败的种子为 3900000；DP 加 RGB-D 成功种子为 2700000、2900000、3200000。',
++        '', '纯 DP 加纠偏后有 3 场由失败变为成功、17 场仍失败。ACT 加纠偏后有 16 场由失败变为成功，原来成功的 3 场仍成功，1 场仍失败。动作改写次数是实际指令差异统计，不等于每次介入有效，也不等于纠偏幅度；DP 改写更多动作却仍低成功率。',
++        '', '## 比较条件','',
++        '四组均使用 2700000 至 4600000、间隔 100000 的 20 个种子，初始方块位置逐场完全一致，每场最多 800 个动作步。两个模型使用同一批 50 条演示、固定 40 条训练与 10 条验证划分、2000 轮训练和 80000 次更新。纯策略的开发场景各 5 场均为 0/5，开发结果不混入本表。',
++        '', 'ACT 和 DP 使用各自原有的 2000 轮权重，RGB-D 组没有重新训练。两组复用同一个 visual_guard_v2_initfix：只修复释放分支缺少运动学初始化的缺陷，所有纠偏阈值不变。原始控制器及修复前 4 场结果和无效异常尝试单独保留，不混入本轮统计。修复后的两组各 20 场均有效，无崩溃重试。',
++        '', '深度、相机标定、已知红绿颜色和 5 cm 方块尺寸只进入外部控制器。两个策略网络仍只接收 RGB 与关节；方块真值仅用于事后评分，不进入控制决策。',
++        '', '## 指标与局限','',
++        '持续抬升代理指相对初始高度超过 2.5 cm 且连续至少 5 个动作步，不是经过夹持验证的抓取成功。官方成功检查堆叠位置容差与双夹爪打开，未额外验证释放后的长期稳定性。',
++        '', 'ACT 预测并缓存执行 50 步，DP 预测 16 步并执行 8 步，观测历史、损失和精度也不同。纠偏后的 ACT 清空缓存重新预测，DP 清空未执行动作但保留实际两帧历史。因此本轮比较的是既有组合系统，不是只改变网络架构的严格消融。每个动作步的仿真时长也不固定，平均动作步数不能直接解释为真实耗时。',
++        '', '本轮只有一个训练种子和 20 个场景；纯策略的低成功率存在地板效应，阶段代理有助于定位问题却不能替代任务成功率。训练噪声 MSE 与 ACT 重建损失不能横向比较。历史 ACT 加 RGB-D 的 19/20 来自另一批种子，不参与本轮配对排名；本轮 19/20 是独立完成的同场景结果。',
++        '', '## 结果文件','',
++        'FOUR_WAY_COMPARISON.json 与 RGBD_COMPARISON.json 同步保存本轮最终四组结果；纯策略历史报告保留其独立范围。逐场原始结果、日志及轨迹未改动。']
++    if (RUN/'DP_FAILURE_DIAGNOSIS.md').exists():
++        lines+=['','## DP 失败诊断','',
++            '冻结权重的专家观测预测、夹爪时序、动作对齐和单场执行响应检查已完成，见 [DP 失败诊断](DP_FAILURE_DIAGNOSIS.md)。诊断记录与正式成功率测试分开保存；未重新训练或修改控制策略。']
++    text='\n'.join(lines)+'\n'
++    for name in ['FOUR_WAY_COMPARISON.md','RGBD_COMPARISON.md']:(RUN/name).write_text(text)
++    print(json.dumps(summaries,ensure_ascii=False))
++
++if __name__=='__main__':main()
+diff --git a/scripts/dp_comparison/test_act_ablation.py b/scripts/dp_comparison/test_act_ablation.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/test_act_ablation.py
+@@ -0,0 +1,41 @@
++"""Ensure the single branch is the only code difference and no-release behavior works."""
++import ast
++import io
++import json
++import unittest
++from pathlib import Path
++from types import SimpleNamespace
++from unittest.mock import patch
++import numpy as np
++import visual_guard_no_release as module
++
++
++class AblationContract(unittest.TestCase):
++    def test_only_release_condition_differs(self):
++        root=Path(__file__).parent
++        before=ast.parse((root/'visual_guard_initfix.py').read_text())
++        after=ast.parse((root/'visual_guard_no_release.py').read_text())
++        altered=[n for n in ast.walk(after) if isinstance(n,ast.If) and isinstance(n.test,ast.BoolOp)
++            and isinstance(n.test.values[0],ast.Constant) and n.test.values[0].value is False]
++        self.assertEqual(len(altered),1)
++        altered[0].test.values=altered[0].test.values[1:]
++        self.assertEqual(ast.dump(before),ast.dump(after))
++
++    def test_no_release_intervention_but_estimation_kept(self):
++        guard=module.VisualGuard.__new__(module.VisualGuard)
++        guard.log=io.StringIO();guard.kin={};guard.initial={'green':np.array([-.1,0,.7])}
++        guard.sides={'green':'left'};guard.attempted={'red':True,'green':True}
++        guard.red_lifted=True;guard.red_placed=True;guard.green_lifted=True
++        guard.green_released=False;guard.settle=0
++        task=SimpleNamespace(robot=object(),cameras=None,take_action_cnt=250)
++        centers={'red':np.array([-.1,0,.75]),'green':np.array([-.15,0,.82])}
++        action=np.zeros(14);action[6]=1
++        with patch.object(module,'estimate_cube',side_effect=lambda c,color:{'center':centers[color],'pixels':{}}):
++            actual=guard.filter(task,action)
++        np.testing.assert_array_equal(actual,action)
++        self.assertFalse(guard.green_released)
++        self.assertFalse(json.loads(guard.log.getvalue())['corrected'])
++
++if __name__=='__main__':
++    import json
++    unittest.main()
+diff --git a/scripts/dp_comparison/test_contracts.py b/scripts/dp_comparison/test_contracts.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/test_contracts.py
+@@ -0,0 +1,33 @@
++import unittest
++from common import CONFIG, Episodes, load_split, sequence_indices, torch, np
++
++class Contracts(unittest.TestCase):
++    def test_split(self):
++        train, val = load_split()
++        self.assertEqual((len(train),len(val)),(40,10))
++        self.assertFalse(set(train)&set(val))
++    def test_start_padding_and_alignment(self):
++        obs, action = sequence_indices(0,100,CONFIG)
++        self.assertEqual(obs.tolist(),[0,0])
++        self.assertEqual(action[:3].tolist(),[0,0,1])
++    def test_middle_no_future_observation(self):
++        obs, action = sequence_indices(50,100,CONFIG)
++        self.assertEqual(obs.tolist(),[49,50])
++        self.assertEqual(action[CONFIG['n_obs_steps']-1],50)
++        self.assertEqual(action[-1],64)
++    def test_end_padding(self):
++        obs, action = sequence_indices(99,100,CONFIG)
++        self.assertEqual(obs.tolist(),[98,99])
++        self.assertTrue(np.all(action[1:]==99))
++    def test_cpu_rgb_sample(self):
++        dataset=Episodes(); batch,_=dataset.sample(0,0,device='cpu')
++        self.assertEqual(set(batch['obs']),{'agent_pos','cam_head','cam_left_wrist','cam_right_wrist'})
++        self.assertEqual(tuple(batch['action'].shape),(1,16,14))
++        rgb=batch['obs']['cam_head']
++        self.assertEqual(tuple(rgb.shape),(1,2,3,480,640))
++        self.assertTrue(torch.equal(rgb[:,0],rgb[:,1]))
++        self.assertGreaterEqual(rgb.min().item(),0)
++        self.assertLessEqual(rgb.max().item(),1)
++        self.assertTrue(np.array_equal(batch['action'][0,1].numpy(),dataset.actions[0][0]))
++
++if __name__=='__main__': unittest.main()
+diff --git a/scripts/dp_comparison/test_guard_initfix.py b/scripts/dp_comparison/test_guard_initfix.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/test_guard_initfix.py
+@@ -0,0 +1,32 @@
++"""Regression: green release may precede initialization of its arm."""
++import io
++import unittest
++from types import SimpleNamespace
++from unittest.mock import patch
++import numpy as np
++import visual_guard_initfix as module
++
++
++class ReleaseInitialization(unittest.TestCase):
++    def test_release_initializes_missing_arm_and_reuses_it(self):
++        guard=module.VisualGuard.__new__(module.VisualGuard)
++        guard.log=io.StringIO();guard.kin={};guard.initial={'green':np.array([-.1,0,.7])}
++        guard.sides={'green':'left'};guard.attempted={'red':False,'green':False}
++        guard.red_lifted=False;guard.red_placed=False
++        guard.green_lifted=True;guard.green_released=False;guard.settle=0
++        robot=SimpleNamespace(get_left_arm_real_jointState=lambda:np.zeros(6))
++        task=SimpleNamespace(robot=robot,cameras=None,take_action_cnt=256)
++        centers={'red':np.array([-.1,0,.75]),'green':np.array([-.1,0,.802])}
++        kin=SimpleNamespace(pose=lambda q:(np.array([-.1,0,.85]),np.eye(3)))
++        action=np.zeros(14);action[6]=1
++        with patch.object(module,'estimate_cube',side_effect=lambda c,color:{'center':centers[color],'pixels':{}}),patch.object(module,'Kinematics',return_value=kin) as factory:
++            corrected=guard.filter(task,action)
++            self.assertTrue(np.isfinite(corrected).all())
++            self.assertTrue(guard.green_released)
++            factory.assert_called_once_with(robot,'left')
++            guard.green_released=False;guard.settle=0
++            guard.filter(task,action)
++            factory.assert_called_once_with(robot,'left')
++
++
++if __name__=='__main__':unittest.main()
+diff --git a/scripts/dp_comparison/train.py b/scripts/dp_comparison/train.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/train.py
+@@ -0,0 +1,114 @@
++"""2000 episodic epochs, matching the existing ACT's 80000-update budget."""
++import argparse
++import copy
++import json
++import math
++import time
++import os
++import random
++from pathlib import Path
++from common import CONFIG, Episodes, build_policy, save_json, torch, np
++from diffusion_policy.model.diffusion.ema_model import EMAModel
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--output', type=Path, required=True)
++    parser.add_argument('--preflight', action='store_true')
++    args = parser.parse_args()
++    args.output.mkdir(parents=True, exist_ok=True)
++    torch.set_num_threads(4)
++    torch.manual_seed(0); np.random.seed(0); random.seed(0)
++    assert torch.cuda.is_available() and torch.cuda.is_bf16_supported()
++    config = copy.deepcopy(CONFIG)
++    dataset = Episodes(config)
++    model = build_policy(config)
++    model.set_normalizer(dataset.normalizer())
++    model.cuda()
++    model.train()
++    ema_model = copy.deepcopy(model)
++    ema = EMAModel(ema_model, power=0.75)
++    optimizer = torch.optim.AdamW(model.parameters(), lr=config['lr'], betas=(0.95, 0.999), weight_decay=config['weight_decay'])
++    batch, center = dataset.sample(dataset.train[0])
++    begin = time.monotonic()
++    with torch.autocast('cuda', dtype=torch.bfloat16):
++        loss = model.compute_loss(batch)
++    assert torch.isfinite(loss)
++    loss.backward()
++    finite_grad = all(torch.isfinite(p.grad).all().item() for p in model.parameters() if p.grad is not None)
++    assert finite_grad
++    optimizer.step(); optimizer.zero_grad(set_to_none=True); ema.step(model)
++    with torch.inference_mode(), torch.autocast('cuda', dtype=torch.bfloat16):
++        predicted = ema_model.predict_action(batch['obs'])['action']
++    assert predicted.shape == (1, 8, 14) and torch.isfinite(predicted).all()
++    preflight = {'status': 'passed', 'parameters': sum(p.numel() for p in model.parameters()),
++        'loss': loss.item(), 'finite_gradients': finite_grad, 'prediction_shape': list(predicted.shape),
++        'peak_cuda_reserved_bytes': torch.cuda.max_memory_reserved(), 'elapsed_seconds': time.monotonic()-begin,
++        'input_keys': list(batch['obs']), 'center': center, 'train_episodes': dataset.train, 'validation_episodes': dataset.val}
++    save_json(args.output / 'preflight.json', preflight)
++    print(json.dumps(preflight), flush=True)
++    if args.preflight:
++        return
++    # Preflight is a separate invocation: never count it as a training update.
++    raise RuntimeError('Run with --preflight or use training_main() via --train entry')
++
++def training_main(output):
++    output.mkdir(parents=True, exist_ok=True)
++    torch.set_num_threads(4); torch.manual_seed(0); np.random.seed(0); random.seed(0)
++    config = copy.deepcopy(CONFIG)
++    dataset = Episodes(config)
++    model = build_policy(config)
++    model.set_normalizer(dataset.normalizer()); model.cuda(); model.train()
++    ema_model = copy.deepcopy(model)
++    ema = EMAModel(ema_model, power=0.75)
++    optimizer = torch.optim.AdamW(model.parameters(), lr=config['lr'], betas=(0.95, 0.999), weight_decay=config['weight_decay'])
++    save_json(output / 'config.json', config)
++    start = time.monotonic(); updates = 0
++    # Fixed validation locations and independent noise seed, not test-scene tuning.
++    val_points = [(ep, int(dataset.lengths[ep] * fraction)) for ep in dataset.val for fraction in (0.15, 0.5, 0.85)]
++    with (output / 'metrics.jsonl').open('x', buffering=1) as log:
++        for epoch in range(1, config['epochs'] + 1):
++            losses = []
++            for ep in dataset.rng.permutation(dataset.train):
++                batch, _ = dataset.sample(int(ep))
++                progress = updates / (config['epochs'] * 40)
++                warmup = min(1.0, (updates + 1) / 500)
++                lr = config['lr'] * warmup * (0.5 + 0.5 * math.cos(math.pi * progress))
++                for group in optimizer.param_groups: group['lr'] = lr
++                with torch.autocast('cuda', dtype=torch.bfloat16): loss = model.compute_loss(batch)
++                if not torch.isfinite(loss): raise RuntimeError(f'Non-finite loss at {epoch}:{updates}')
++                loss.backward()
++                grad = torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0, error_if_nonfinite=True)
++                optimizer.step(); optimizer.zero_grad(set_to_none=True); ema.step(model)
++                losses.append(loss.item()); updates += 1
++            row = {'epoch': epoch, 'optimizer_steps': updates, 'train_noise_mse': float(np.mean(losses)),
++                   'lr': lr, 'last_gradient_norm': float(grad), 'elapsed_seconds': time.monotonic()-start,
++                   'peak_cuda_reserved_bytes': torch.cuda.max_memory_reserved()}
++            if epoch == 1 or epoch % 20 == 0:
++                val_losses = []
++                with torch.random.fork_rng(devices=[0]):
++                    torch.manual_seed(12345)
++                    with torch.inference_mode(), torch.autocast('cuda', dtype=torch.bfloat16):
++                        for ep, center in val_points:
++                            sample, _ = dataset.sample(ep, center, critical=False)
++                            val_losses.append(ema_model.compute_loss(sample).item())
++                row['validation_ema_noise_mse'] = float(np.mean(val_losses))
++            log.write(json.dumps(row)+'\n')
++            save_json(output / 'progress.json', {'status': 'training', 'pid': os.getpid(), **row})
++            if epoch == 1 or epoch % 20 == 0: print(json.dumps(row), flush=True)
++            if epoch % 200 == 0:
++                payload = {'config': config, 'epoch': epoch, 'optimizer_steps': updates,
++                           'model': model.state_dict(), 'ema': ema_model.state_dict()}
++                tmp = output / 'latest.pt.tmp'; torch.save(payload, tmp); tmp.replace(output / 'latest.pt')
++                if epoch == config['epochs']:
++                    tmp = output / '2000.pt.tmp'; torch.save(payload, tmp); tmp.replace(output / '2000.pt')
++    assert updates == 80000
++    save_json(output / 'progress.json', {'status': 'completed', **row})
++
++if __name__ == '__main__':
++    import sys
++    if '--train' in sys.argv:
++        sys.argv.remove('--train')
++        parser = argparse.ArgumentParser(); parser.add_argument('--output', type=Path, required=True)
++        training_main(parser.parse_args().output)
++    else:
++        main()
+diff --git a/scripts/dp_comparison/verify_diagnosis.py b/scripts/dp_comparison/verify_diagnosis.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/verify_diagnosis.py
+@@ -0,0 +1,32 @@
++"""Verify final report synchronization, frozen weights, and diagnostic evidence."""
++import json
++from pathlib import Path
++from common import ROOT,sha,save_json,np
++
++RUN=ROOT/'data/dp_compare_20261007/run2000_v2';OUT=RUN/'diagnosis_20261008'
++four=json.loads((RUN/'FOUR_WAY_COMPARISON.json').read_text())
++assert four==json.loads((RUN/'RGBD_COMPARISON.json').read_text())
++assert (RUN/'FOUR_WAY_COMPARISON.md').read_text()==(RUN/'RGBD_COMPARISON.md').read_text()
++assert '正在运行' not in (RUN/'RGBD_COMPARISON.md').read_text()
++assert [four['summaries'][p]['successes'] for p in ['ACT','DP','ACT_RGBD','DP_RGBD']]==[3,0,19,3]
++assert len(four['rows'])==80
++result=json.loads((OUT/'results.json').read_text());manifest=json.loads((OUT/'manifest.json').read_text())
++assert result['status']=='completed' and result['summaries']['train']['samples']==440 and result['summaries']['validation']['samples']==110
++assert len((OUT/'points.jsonl').read_text().splitlines())==550
++pred=np.load(OUT/'predictions.npz')['action_pred'];assert pred.shape==(550,16,14) and np.isfinite(pred).all()
++assert result['checkpoint_sha256']==manifest['checkpoint_sha256']==sha(RUN/'training/2000.pt')
++for rel,h in manifest['source_hashes'].items():assert sha(ROOT/rel)==h
++assert sha(ROOT/'scripts/dp_comparison/visual_guard_initfix.py')=='8d30af9a66469324a3fc133b7ea1c6de76f06ab995380b0d3651d9e516db29fc'
++structure=json.loads((OUT/'structure.json').read_text())
++assert structure['rgb_checks']==150 and structure['rgb_conversion_max_pixel_error']==0 and structure['normalizer_recomputed_max_error']==0
++assert all(r['raw_action_conversion_max_error']==r['raw_state_conversion_max_error']==r['action_t_vs_state_tplus1_max_error_excluding_final']==0 for r in structure['raw_conversion_checks'])
++new=json.loads((OUT/'closed_loop_seed2700000/result.json').read_text())
++old=next(r for r in four['rows'] if r['policy']=='DP' and r['seed']==2700000)
++assert new['valid'] and new['steps']==800 and new['initial']==old['initial'] and new['success']==old['success']
++oldpath=Path(old.get('result_path',RUN/'evaluation/fresh_test/DP-seed2700000/result.json')).parent/'trace.jsonl'
++commands=lambda p:np.asarray([json.loads(x)['action'] for x in p.read_text().splitlines()])
++delta=float(np.abs(commands(oldpath)-commands(OUT/'closed_loop_seed2700000/trace.jsonl')).max());assert delta==0
++audit={'status':'passed','expert_points':550,'validation_noise_repeat_observations':20,'model_retrained':False,
++    'formal_results_unchanged':True,'replay_max_command_difference':delta,'checkpoint_sha256':sha(RUN/'training/2000.pt'),
++    'report_sha256':sha(RUN/'DP_FAILURE_DIAGNOSIS.md')}
++save_json(OUT/'verification.json',audit);print(json.dumps(audit))
+diff --git a/scripts/dp_comparison/visual_guard_initfix.py b/scripts/dp_comparison/visual_guard_initfix.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/visual_guard_initfix.py
+@@ -0,0 +1,160 @@
++"""Experimental calibrated RGB-D alignment guard for known colored 5 cm cubes.
++
++No actor pose or simulator ground truth is read by the controller.
++ACT still supplies the trajectory and gripper timing outside alignment events.
++"""
++import json
++import numpy as np
++import cv2
++import transforms3d as t3d
++
++
++def estimate_cube(cameras, color):
++    config=cameras.get_config();rgba=cameras.get_rgba();clouds=[];counts={}
++    for name, camera in config.items():
++        if name not in ['head_camera', 'left_camera', 'right_camera']:
++            continue
++        if name not in rgba or name not in cameras._serial_depth_m:
++            continue
++        rgb=rgba[name]['rgba'][...,:3];hsv=cv2.cvtColor(rgb,cv2.COLOR_RGB2HSV)
++        hue,sat,val=cv2.split(hsv)
++        hue_ok=((hue<12)|(hue>168)) if color=='red' else ((hue>35)&(hue<90))
++        mask=(hue_ok&(sat>130)&(val>45)).astype('uint8')
++        n,labels,stats,_=cv2.connectedComponentsWithStats(mask)
++        if n<2:continue
++        component=1+int(np.argmax(stats[1:,cv2.CC_STAT_AREA]))
++        if stats[component,cv2.CC_STAT_AREA]<20:continue
++        y,x=np.where(labels==component);z=cameras._serial_depth_m[name][y,x]
++        valid=np.isfinite(z)&(z>.1)&(z<3);y,x,z=y[valid],x[valid],z[valid]
++        if len(z)<20:continue
++        K=np.asarray(camera['intrinsic_cv']);E=np.asarray(camera['extrinsic_cv'])
++        cam=np.c_[x,y,np.ones(len(x))]@np.linalg.inv(K).T*z[:,None]
++        # extrinsic_cv maps world to CV-camera coordinates.
++        world=(cam-E[:3,3])@E[:3,:3]
++        clouds.append(world);counts[name]=len(world)
++    if not clouds:return None
++    points=np.concatenate(clouds);top=float(np.quantile(points[:,2],.98))
++    top_points=points[np.abs(points[:,2]-top)<.004]
++    if len(top_points)<20:return None
++    xy=(np.quantile(top_points[:,:2],.01,axis=0)+np.quantile(top_points[:,:2],.99,axis=0))/2
++    return {'center':np.r_[xy,top-.025], 'pixels':counts,'top_points':len(top_points)}
++
++
++class Kinematics:
++    def __init__(self,robot,side):
++        self.robot=robot;self.side=side;self.entity=getattr(robot,side+'_entity')
++        self.joint=getattr(robot,side+'_ee');self.pin=self.entity.create_pinocchio_model()
++        active=self.entity.get_active_joints()
++        self.indices=[active.index(j) for j in getattr(robot,side+'_arm_joints')]
++        self.link=self.entity.get_links().index(self.joint.child_link)
++        self.limits=np.asarray(self.entity.get_qlimits())[self.indices]
++    def pose(self,q):
++        full=self.entity.get_qpos().copy();full[self.indices]=q
++        self.pin.compute_forward_kinematics(full)
++        ee=self.entity.get_root_pose()*self.pin.get_link_pose(self.link)*self.joint.get_pose_in_child()
++        rotation=t3d.quaternions.quat2mat(ee.q)@getattr(self.robot,self.side+'_global_trans_matrix')@getattr(self.robot,self.side+'_delta_matrix')
++        position=ee.p+rotation@np.array([getattr(self.robot,self.side+'_gripper_bias'),0,0])
++        return position,rotation
++    def solve(self,q,target,rotation):
++        q=q.copy()
++        for _ in range(40):
++            p,R=self.pose(q);rot_error=rotation@R.T
++            axis,angle=t3d.axangles.mat2axangle(rot_error);orient=axis*angle
++            error=np.r_[target-p,orient*.08]
++            if np.linalg.norm(target-p)<.0015 and np.linalg.norm(orient)<.03:break
++            J=np.empty((6,len(q)))
++            for j in range(len(q)):
++                shifted=q.copy();shifted[j]+=.0001;p2,R2=self.pose(shifted)
++                axis2,angle2=t3d.axangles.mat2axangle(R2@R.T)
++                J[:,j]=np.r_[(p2-p)/.0001,axis2*angle2/.0001*.08]
++            delta=J.T@np.linalg.solve(J@J.T+np.eye(6)*.00003,error)
++            q=np.clip(q+np.clip(delta,-.12,.12),self.limits[:,0],self.limits[:,1])
++        p,R=self.pose(q)
++        return q,float(np.linalg.norm(p-target))
++
++
++class VisualGuard:
++    def __init__(self,out):
++        self.log=(out/'visual_guard.jsonl').open('x',buffering=1)
++        self.kin={};self.initial={};self.sides={};self.attempted={'red':False,'green':False}
++        self.red_lifted=False;self.red_placed=False;self.events=[]
++        self.settle=0;self.hold_action=None;self.needs_replan=False
++        self.green_lifted=False;self.green_released=False
++    def filter(self,task,action):
++        a=np.array(action,dtype=float).copy();robot=task.robot
++        estimates={color:estimate_cube(task.cameras,color) for color in ['red','green']}
++        for color,value in estimates.items():
++            if value is not None and color not in self.initial:
++                self.initial[color]=value['center'].copy();self.sides[color]='left' if value['center'][0]<0 else 'right'
++        red=estimates['red']
++        if red is not None and 'red' in self.initial:
++            p=red['center']
++            if p[2]-self.initial['red'][2]>.025:self.red_lifted=True
++            if self.red_lifted and abs(p[2]-self.initial['red'][2])<.012 and abs(p[0])<.06:
++                self.red_placed=True
++        green=estimates['green']
++        if green is not None and 'green' in self.initial:
++            if green['center'][2]-self.initial['green'][2]>.025:self.green_lifted=True
++        color='green' if self.red_placed else 'red';value=estimates[color]
++        row={'step':int(task.take_action_cnt),'phase':color,'estimates':{c:None if v is None else {'center':v['center'].tolist(),'pixels':v['pixels']} for c,v in estimates.items()},'corrected':False}
++        if self.settle:
++            self.settle-=1
++            if not self.settle:self.needs_replan=True
++            row.update(corrected=True,event='settle_closed')
++            self.log.write(json.dumps(row)+'\n')
++            return self.hold_action.copy()
++        # Before green release, align the held cube with the visually observed
++        # red cube. The cube-to-TCP offset also comes from the current images.
++        if self.green_lifted and not self.green_released:
++            side=self.sides['green'];j=0 if side=='left' else 7
++            if a[j+6]>.2:
++                a[j+6]=0
++                if red is None or green is None:
++                    row.update(corrected=True,event='release_blocked_missing_vision')
++                else:
++                    # Release can be reached before this arm's approach branch.
++                    if side not in self.kin:self.kin[side]=Kinematics(robot,side)
++                    kin=self.kin[side];current=np.array(getattr(robot,'get_'+side+'_arm_real_jointState')()[:6])
++                    p,rotation=kin.pose(current);offset=p-green['center']
++                    desired_cube=red['center']+np.array([0,0,.052])
++                    error=desired_cube-green['center']
++                    if np.linalg.norm(error[:2])<.008 and abs(error[2])<.008:
++                        a[j:j+6]=current;a[j+6]=1;self.green_released=True
++                        self.settle=5;self.hold_action=a.copy()
++                        row.update(corrected=True,event='aligned_release',cube_alignment_error_cm=(error*100).tolist())
++                    else:
++                        target=desired_cube+offset
++                        if np.linalg.norm(error[:2])>.01:
++                            target[2]=max(p[2],desired_cube[2]+offset[2]+.05)
++                        q,residual=kin.solve(current,target,rotation)
++                        a[j:j+6]=q if residual<.005 else current
++                        row.update(corrected=True,event='align_before_release',ik_residual_cm=residual*100,cube_alignment_error_cm=(error*100).tolist())
++                self.log.write(json.dumps(row)+'\n')
++                return a
++        if value is not None and color in self.sides and not self.attempted[color]:
++            side=self.sides[color];j=0 if side=='left' else 7
++            if side not in self.kin:self.kin[side]=Kinematics(robot,side)
++            kin=self.kin[side];current=np.array(getattr(robot,'get_'+side+'_arm_real_jointState')()[:6])
++            current_p,_=kin.pose(current);pred_p,rotation=kin.pose(a[j:j+6]);center=value['center']
++            target=center+np.array([0,0,.0106]);distance=float(np.linalg.norm(pred_p-target))
++            # Begin alignment on low, downward approaches, before contact.
++            if current_p[2]<center[2]+.12 and pred_p[2]<center[2]+.12 and rotation[2,0]<-.9:
++                row.update(side=side,predicted_tcp_error_cm=distance*100,current_tcp_error_cm=float(np.linalg.norm(current_p-target))*100)
++                if np.linalg.norm(current_p-target)<.006:
++                    a[j:j+6]=current;a[j+6]=0;self.attempted[color]=True
++                    self.settle=5;self.hold_action=a.copy()
++                    row.update(corrected=True,event='aligned_close')
++                else:
++                    # Correct lateral error above the object before descending.
++                    safe_target=target.copy()
++                    if np.linalg.norm(current_p[:2]-target[:2])>.01:
++                        safe_target[2]=max(current_p[2],center[2]+.07)
++                    q,error=kin.solve(current,safe_target,rotation)
++                    a[j+6]=1
++                    if error<.005:
++                        a[j:j+6]=q
++                        row.update(corrected=True,event='align_open',ik_residual_cm=error*100,target=safe_target.tolist())
++                    else:
++                        a[j:j+6]=current;row.update(event='ik_failed',ik_residual_cm=error*100)
++        self.log.write(json.dumps(row)+'\n')
++        return a
+diff --git a/scripts/dp_comparison/visual_guard_no_release.py b/scripts/dp_comparison/visual_guard_no_release.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/dp_comparison/visual_guard_no_release.py
+@@ -0,0 +1,161 @@
++"""Experimental calibrated RGB-D alignment guard for known colored 5 cm cubes.
++
++No actor pose or simulator ground truth is read by the controller.
++ACT still supplies the trajectory and gripper timing outside alignment events.
++"""
++import json
++import numpy as np
++import cv2
++import transforms3d as t3d
++
++
++def estimate_cube(cameras, color):
++    config=cameras.get_config();rgba=cameras.get_rgba();clouds=[];counts={}
++    for name, camera in config.items():
++        if name not in ['head_camera', 'left_camera', 'right_camera']:
++            continue
++        if name not in rgba or name not in cameras._serial_depth_m:
++            continue
++        rgb=rgba[name]['rgba'][...,:3];hsv=cv2.cvtColor(rgb,cv2.COLOR_RGB2HSV)
++        hue,sat,val=cv2.split(hsv)
++        hue_ok=((hue<12)|(hue>168)) if color=='red' else ((hue>35)&(hue<90))
++        mask=(hue_ok&(sat>130)&(val>45)).astype('uint8')
++        n,labels,stats,_=cv2.connectedComponentsWithStats(mask)
++        if n<2:continue
++        component=1+int(np.argmax(stats[1:,cv2.CC_STAT_AREA]))
++        if stats[component,cv2.CC_STAT_AREA]<20:continue
++        y,x=np.where(labels==component);z=cameras._serial_depth_m[name][y,x]
++        valid=np.isfinite(z)&(z>.1)&(z<3);y,x,z=y[valid],x[valid],z[valid]
++        if len(z)<20:continue
++        K=np.asarray(camera['intrinsic_cv']);E=np.asarray(camera['extrinsic_cv'])
++        cam=np.c_[x,y,np.ones(len(x))]@np.linalg.inv(K).T*z[:,None]
++        # extrinsic_cv maps world to CV-camera coordinates.
++        world=(cam-E[:3,3])@E[:3,:3]
++        clouds.append(world);counts[name]=len(world)
++    if not clouds:return None
++    points=np.concatenate(clouds);top=float(np.quantile(points[:,2],.98))
++    top_points=points[np.abs(points[:,2]-top)<.004]
++    if len(top_points)<20:return None
++    xy=(np.quantile(top_points[:,:2],.01,axis=0)+np.quantile(top_points[:,:2],.99,axis=0))/2
++    return {'center':np.r_[xy,top-.025], 'pixels':counts,'top_points':len(top_points)}
++
++
++class Kinematics:
++    def __init__(self,robot,side):
++        self.robot=robot;self.side=side;self.entity=getattr(robot,side+'_entity')
++        self.joint=getattr(robot,side+'_ee');self.pin=self.entity.create_pinocchio_model()
++        active=self.entity.get_active_joints()
++        self.indices=[active.index(j) for j in getattr(robot,side+'_arm_joints')]
++        self.link=self.entity.get_links().index(self.joint.child_link)
++        self.limits=np.asarray(self.entity.get_qlimits())[self.indices]
++    def pose(self,q):
++        full=self.entity.get_qpos().copy();full[self.indices]=q
++        self.pin.compute_forward_kinematics(full)
++        ee=self.entity.get_root_pose()*self.pin.get_link_pose(self.link)*self.joint.get_pose_in_child()
++        rotation=t3d.quaternions.quat2mat(ee.q)@getattr(self.robot,self.side+'_global_trans_matrix')@getattr(self.robot,self.side+'_delta_matrix')
++        position=ee.p+rotation@np.array([getattr(self.robot,self.side+'_gripper_bias'),0,0])
++        return position,rotation
++    def solve(self,q,target,rotation):
++        q=q.copy()
++        for _ in range(40):
++            p,R=self.pose(q);rot_error=rotation@R.T
++            axis,angle=t3d.axangles.mat2axangle(rot_error);orient=axis*angle
++            error=np.r_[target-p,orient*.08]
++            if np.linalg.norm(target-p)<.0015 and np.linalg.norm(orient)<.03:break
++            J=np.empty((6,len(q)))
++            for j in range(len(q)):
++                shifted=q.copy();shifted[j]+=.0001;p2,R2=self.pose(shifted)
++                axis2,angle2=t3d.axangles.mat2axangle(R2@R.T)
++                J[:,j]=np.r_[(p2-p)/.0001,axis2*angle2/.0001*.08]
++            delta=J.T@np.linalg.solve(J@J.T+np.eye(6)*.00003,error)
++            q=np.clip(q+np.clip(delta,-.12,.12),self.limits[:,0],self.limits[:,1])
++        p,R=self.pose(q)
++        return q,float(np.linalg.norm(p-target))
++
++
++class VisualGuard:
++    def __init__(self,out):
++        self.log=(out/'visual_guard.jsonl').open('x',buffering=1)
++        self.kin={};self.initial={};self.sides={};self.attempted={'red':False,'green':False}
++        self.red_lifted=False;self.red_placed=False;self.events=[]
++        self.settle=0;self.hold_action=None;self.needs_replan=False
++        self.green_lifted=False;self.green_released=False
++    def filter(self,task,action):
++        a=np.array(action,dtype=float).copy();robot=task.robot
++        estimates={color:estimate_cube(task.cameras,color) for color in ['red','green']}
++        for color,value in estimates.items():
++            if value is not None and color not in self.initial:
++                self.initial[color]=value['center'].copy();self.sides[color]='left' if value['center'][0]<0 else 'right'
++        red=estimates['red']
++        if red is not None and 'red' in self.initial:
++            p=red['center']
++            if p[2]-self.initial['red'][2]>.025:self.red_lifted=True
++            if self.red_lifted and abs(p[2]-self.initial['red'][2])<.012 and abs(p[0])<.06:
++                self.red_placed=True
++        green=estimates['green']
++        if green is not None and 'green' in self.initial:
++            if green['center'][2]-self.initial['green'][2]>.025:self.green_lifted=True
++        color='green' if self.red_placed else 'red';value=estimates[color]
++        row={'step':int(task.take_action_cnt),'phase':color,'estimates':{c:None if v is None else {'center':v['center'].tolist(),'pixels':v['pixels']} for c,v in estimates.items()},'corrected':False}
++        if self.settle:
++            self.settle-=1
++            if not self.settle:self.needs_replan=True
++            row.update(corrected=True,event='settle_closed')
++            self.log.write(json.dumps(row)+'\n')
++            return self.hold_action.copy()
++        # Before green release, align the held cube with the visually observed
++        # red cube. The cube-to-TCP offset also comes from the current images.
++        # Authorized component ablation: disable the whole release-alignment branch.
++        if False and self.green_lifted and not self.green_released:
++            side=self.sides['green'];j=0 if side=='left' else 7
++            if a[j+6]>.2:
++                a[j+6]=0
++                if red is None or green is None:
++                    row.update(corrected=True,event='release_blocked_missing_vision')
++                else:
++                    # Release can be reached before this arm's approach branch.
++                    if side not in self.kin:self.kin[side]=Kinematics(robot,side)
++                    kin=self.kin[side];current=np.array(getattr(robot,'get_'+side+'_arm_real_jointState')()[:6])
++                    p,rotation=kin.pose(current);offset=p-green['center']
++                    desired_cube=red['center']+np.array([0,0,.052])
++                    error=desired_cube-green['center']
++                    if np.linalg.norm(error[:2])<.008 and abs(error[2])<.008:
++                        a[j:j+6]=current;a[j+6]=1;self.green_released=True
++                        self.settle=5;self.hold_action=a.copy()
++                        row.update(corrected=True,event='aligned_release',cube_alignment_error_cm=(error*100).tolist())
++                    else:
++                        target=desired_cube+offset
++                        if np.linalg.norm(error[:2])>.01:
++                            target[2]=max(p[2],desired_cube[2]+offset[2]+.05)
++                        q,residual=kin.solve(current,target,rotation)
++                        a[j:j+6]=q if residual<.005 else current
++                        row.update(corrected=True,event='align_before_release',ik_residual_cm=residual*100,cube_alignment_error_cm=(error*100).tolist())
++                self.log.write(json.dumps(row)+'\n')
++                return a
++        if value is not None and color in self.sides and not self.attempted[color]:
++            side=self.sides[color];j=0 if side=='left' else 7
++            if side not in self.kin:self.kin[side]=Kinematics(robot,side)
++            kin=self.kin[side];current=np.array(getattr(robot,'get_'+side+'_arm_real_jointState')()[:6])
++            current_p,_=kin.pose(current);pred_p,rotation=kin.pose(a[j:j+6]);center=value['center']
++            target=center+np.array([0,0,.0106]);distance=float(np.linalg.norm(pred_p-target))
++            # Begin alignment on low, downward approaches, before contact.
++            if current_p[2]<center[2]+.12 and pred_p[2]<center[2]+.12 and rotation[2,0]<-.9:
++                row.update(side=side,predicted_tcp_error_cm=distance*100,current_tcp_error_cm=float(np.linalg.norm(current_p-target))*100)
++                if np.linalg.norm(current_p-target)<.006:
++                    a[j:j+6]=current;a[j+6]=0;self.attempted[color]=True
++                    self.settle=5;self.hold_action=a.copy()
++                    row.update(corrected=True,event='aligned_close')
++                else:
++                    # Correct lateral error above the object before descending.
++                    safe_target=target.copy()
++                    if np.linalg.norm(current_p[:2]-target[:2])>.01:
++                        safe_target[2]=max(current_p[2],center[2]+.07)
++                    q,error=kin.solve(current,safe_target,rotation)
++                    a[j+6]=1
++                    if error<.005:
++                        a[j:j+6]=q
++                        row.update(corrected=True,event='align_open',ik_residual_cm=error*100,target=safe_target.tolist())
++                    else:
++                        a[j:j+6]=current;row.update(event='ik_failed',ik_residual_cm=error*100)
++        self.log.write(json.dumps(row)+'\n')
++        return a

@@ -57,3 +57,8 @@ viewer_show.*
 !results/figures/*.jpg
 !results/short_videos/README.md
 
+
+# Curated project evidence
+!results/short_videos/expert-episode0-preview.mp4
+!results/short_videos/historical-act-rgbd-seed700000.mp4
+!experiments/2026-10-08-policy-comparison/dp-expert-predictions.npz

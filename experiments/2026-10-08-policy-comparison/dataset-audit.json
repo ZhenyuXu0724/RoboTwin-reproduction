@@ -1,0 +1,543 @@
+{
+  "episodes": [
+    {
+      "episode_id": 0,
+      "length": 307,
+      "action_dim": 14,
+      "video_decoded_frames": 308,
+      "trajectory_sha256": "770ce6315f1c2102143aba6fc994f5c6511e8da5cb9ca028254cbbb5d42d3dc9",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 1,
+      "length": 329,
+      "action_dim": 14,
+      "video_decoded_frames": 330,
+      "trajectory_sha256": "4afd87a97d1f138ab37bdfb1e55f940c24fc138fc4f99065271568ec2c9acff1",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 2,
+      "length": 313,
+      "action_dim": 14,
+      "video_decoded_frames": 314,
+      "trajectory_sha256": "5ea2e8dcd9825e9198b9977f519409e8bed531953563bf04780fcfaddd79460b",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 3,
+      "length": 313,
+      "action_dim": 14,
+      "video_decoded_frames": 314,
+      "trajectory_sha256": "d4fe4d5e732e568a233c3c9d947c402df7ff7de6816e3d7279de98bbfbce8cc5",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 4,
+      "length": 318,
+      "action_dim": 14,
+      "video_decoded_frames": 319,
+      "trajectory_sha256": "43f9bc6a12011011c6889c8744cbdcd6304eeeefc2dda127689a165a9a2919f0",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 5,
+      "length": 320,
+      "action_dim": 14,
+      "video_decoded_frames": 321,
+      "trajectory_sha256": "d35c00cb32f4c99bda666ae6a1a867e08bdfdae441be0045b701d1468122bf8b",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 6,
+      "length": 301,
+      "action_dim": 14,
+      "video_decoded_frames": 302,
+      "trajectory_sha256": "47998d99b2adf92f51579f54b8d0486b8d879af335c2968feb5d59fd650045d3",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 7,
+      "length": 328,
+      "action_dim": 14,
+      "video_decoded_frames": 329,
+      "trajectory_sha256": "d77d2d18674afe413d000f2e3d50d92b8e4e26d4b8a674110b6531847bf1cefa",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 8,
+      "length": 315,
+      "action_dim": 14,
+      "video_decoded_frames": 316,
+      "trajectory_sha256": "0bf92cfe4c126a8aafa0dcf45dec99be101d57ff932c72f91a4dd4fdbf38c15a",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 9,
+      "length": 295,
+      "action_dim": 14,
+      "video_decoded_frames": 296,
+      "trajectory_sha256": "41a72ea0188eb6f3bf6b1cf01efeccaf081a667d918f07e6b486fc373c3902c9",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 10,
+      "length": 331,
+      "action_dim": 14,
+      "video_decoded_frames": 332,
+      "trajectory_sha256": "422ff0182e088555b41e9aa718018a7d0d821bd17d7e71721440fe59f94154d4",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 11,
+      "length": 327,
+      "action_dim": 14,
+      "video_decoded_frames": 328,
+      "trajectory_sha256": "69c112ad235af7a60b94d30bf6047bd82186d535fb210d3ea28508d6166f8fd9",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 12,
+      "length": 312,
+      "action_dim": 14,
+      "video_decoded_frames": 313,
+      "trajectory_sha256": "d3334d73ea28350188e108c3bf2b8a1e46f120f1aada86f06370efcb60ad21a2",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 13,
+      "length": 331,
+      "action_dim": 14,
+      "video_decoded_frames": 332,
+      "trajectory_sha256": "2be35c57e99f964c2c0ff2b62d0d0e8c8f43119827cfddea2a3a557ad4d8d642",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 14,
+      "length": 321,
+      "action_dim": 14,
+      "video_decoded_frames": 322,
+      "trajectory_sha256": "4f78e0c62d92e44b63ce2ccca5d81eec37c89d7ec463a47c2c1e468740d19a7e",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 15,
+      "length": 305,
+      "action_dim": 14,
+      "video_decoded_frames": 306,
+      "trajectory_sha256": "9e30da95cc5d713daa23d718e6d38af0d2c301d372ebe90072513fa16f17af67",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 16,
+      "length": 300,
+      "action_dim": 14,
+      "video_decoded_frames": 301,
+      "trajectory_sha256": "1347c89b8d1bbffd7ab42a16fa9bc5181d92061f108075ec2386e9508e383c69",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 17,
+      "length": 311,
+      "action_dim": 14,
+      "video_decoded_frames": 312,
+      "trajectory_sha256": "c9f87831737349bce4da3ea136b4e7deeb51b133ddd27288beb953c3f0eb3be8",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 18,
+      "length": 312,
+      "action_dim": 14,
+      "video_decoded_frames": 313,
+      "trajectory_sha256": "32534236471186e60b0f74508b63d5c368171a677a0108b3cc3f32d2e9aa0801",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 19,
+      "length": 304,
+      "action_dim": 14,
+      "video_decoded_frames": 305,
+      "trajectory_sha256": "1a3d35d32fcd6d1b16a764651036e7b78ccbb9e2fb113586347bf1d71351336e",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 20,
+      "length": 314,
+      "action_dim": 14,
+      "video_decoded_frames": 315,
+      "trajectory_sha256": "aff42421cfdb8331776185c29847083669e9cf7fbba804c83bf0e02b9683d3f8",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 21,
+      "length": 319,
+      "action_dim": 14,
+      "video_decoded_frames": 320,
+      "trajectory_sha256": "3e17386a1c2c3bb48d1802ea099aeda5e932987200f8e8fc1d0076767ec71801",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 22,
+      "length": 324,
+      "action_dim": 14,
+      "video_decoded_frames": 325,
+      "trajectory_sha256": "29437309a2185bc0f0aeb0197dfb6d2db528fe88271eac760598ba6cd85cfcc7",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 23,
+      "length": 320,
+      "action_dim": 14,
+      "video_decoded_frames": 321,
+      "trajectory_sha256": "90bf8b0cd5bc068772cab84c29c73d18521eca67b71a5e09efc4bb621e77075e",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 24,
+      "length": 306,
+      "action_dim": 14,
+      "video_decoded_frames": 307,
+      "trajectory_sha256": "2f05aeb72fc8d2d5cc8e31d02eb7737e11963fbc89ba15a60be921f520b06bda",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 25,
+      "length": 326,
+      "action_dim": 14,
+      "video_decoded_frames": 327,
+      "trajectory_sha256": "4df9381938cc2a38cd462a8e83325acb3af3e2c0ff6188d28bf7d37034691c27",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 26,
+      "length": 320,
+      "action_dim": 14,
+      "video_decoded_frames": 321,
+      "trajectory_sha256": "303c02e6a745deb443d4428f27caa8e5fd1296b658c297405e3f4b0db7b73509",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 27,
+      "length": 314,
+      "action_dim": 14,
+      "video_decoded_frames": 315,
+      "trajectory_sha256": "56605fae14deeb2222e1a50fafa22a2b20e12d34723720007b87a68b754950e7",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 28,
+      "length": 299,
+      "action_dim": 14,
+      "video_decoded_frames": 300,
+      "trajectory_sha256": "751aaba3684a38ed3bf13f67b69463413f1a084fc10331909ccaa04773000b62",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 29,
+      "length": 306,
+      "action_dim": 14,
+      "video_decoded_frames": 307,
+      "trajectory_sha256": "1912f068576dea7d00cfcac651f50cad24529a375b01fd133ea6d700fe76c460",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 30,
+      "length": 307,
+      "action_dim": 14,
+      "video_decoded_frames": 308,
+      "trajectory_sha256": "e943421e5836915db3e6eec5e61991e79e7affab8b5a88b9d95a86c2de8482e0",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 31,
+      "length": 306,
+      "action_dim": 14,
+      "video_decoded_frames": 307,
+      "trajectory_sha256": "2955bf1e2dc54af2c9ede3c5309567959b0db9a402adf63cafeaee46cec434a7",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 32,
+      "length": 321,
+      "action_dim": 14,
+      "video_decoded_frames": 322,
+      "trajectory_sha256": "da3e6813193a37a658d94b08ecf262f3abbb62b895e1cbf89162e3cf60393940",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 33,
+      "length": 297,
+      "action_dim": 14,
+      "video_decoded_frames": 298,
+      "trajectory_sha256": "3bdf193f67c28d8581a8b389d149df5a49db74f2770baadc308afdacfce4abad",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 34,
+      "length": 311,
+      "action_dim": 14,
+      "video_decoded_frames": 312,
+      "trajectory_sha256": "c65a5596e3cf251def9683157aed05f5936cbac549cbaf6d1ac7da7ca68becb9",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 35,
+      "length": 295,
+      "action_dim": 14,
+      "video_decoded_frames": 296,
+      "trajectory_sha256": "0db61d4b11a43fe62fad1981911ec5df94165cff74ede7858f8350d6c7c21899",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 36,
+      "length": 319,
+      "action_dim": 14,
+      "video_decoded_frames": 320,
+      "trajectory_sha256": "41e5b2df9993f241490857b395f02e8ee81189ac9bfda838c268c4edbe00ac2a",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 37,
+      "length": 316,
+      "action_dim": 14,
+      "video_decoded_frames": 317,
+      "trajectory_sha256": "4fba871e7e978618a39a956bfcd6fdb003e1dd2dd432e9c9b627304c2ff46a0b",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 38,
+      "length": 328,
+      "action_dim": 14,
+      "video_decoded_frames": 329,
+      "trajectory_sha256": "6dbc6916efd82d0004f40ee59737bd40909de9b90fa55acbc0cedf574bdabd04",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 39,
+      "length": 308,
+      "action_dim": 14,
+      "video_decoded_frames": 309,
+      "trajectory_sha256": "4e821c7a3924c8e93b084b84eba00b20d3887c1c42943d716adec1ca4dea9182",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 40,
+      "length": 317,
+      "action_dim": 14,
+      "video_decoded_frames": 318,
+      "trajectory_sha256": "bfccc03a8224741b110acb3cf675316a0180ad620b59b33ab5a9fceeea08155e",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 41,
+      "length": 327,
+      "action_dim": 14,
+      "video_decoded_frames": 328,
+      "trajectory_sha256": "8d792c1024200a774442188d792c1b94620a77a40b2672a18584125ea936252e",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 42,
+      "length": 325,
+      "action_dim": 14,
+      "video_decoded_frames": 326,
+      "trajectory_sha256": "e95edd2577475719b179b568d24e852a765baa1eb5141e79738bda2def68acf4",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 43,
+      "length": 303,
+      "action_dim": 14,
+      "video_decoded_frames": 304,
+      "trajectory_sha256": "3ceed25dc8acbd9d76c5068229850cf83d0f66f1ee0eefa65b39f2fe9060253d",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 44,
+      "length": 315,
+      "action_dim": 14,
+      "video_decoded_frames": 316,
+      "trajectory_sha256": "4d232a155342e0a16809ae6e15334b5a3dacff5069a9343536789197806a3277",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 45,
+      "length": 328,
+      "action_dim": 14,
+      "video_decoded_frames": 329,
+      "trajectory_sha256": "9b0d13abcfdad11bd785a5ead5105080f9243cd8bbbb0aee9ba2d22461753f28",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 46,
+      "length": 301,
+      "action_dim": 14,
+      "video_decoded_frames": 302,
+      "trajectory_sha256": "40c25afc06d6a7d7df3bd12d9e6407adb1898b8e658c6ab3388093769a17dfc5",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 47,
+      "length": 298,
+      "action_dim": 14,
+      "video_decoded_frames": 299,
+      "trajectory_sha256": "e7465dc35aa1c61aa619e2bc978705d8c0e46cd606b53b4a27d0f25740b8ee62",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 48,
+      "length": 309,
+      "action_dim": 14,
+      "video_decoded_frames": 310,
+      "trajectory_sha256": "0704a898aa266de327c19095fe9773e504e6c4fcbfb346af5cdb6c7a0ddfaedc",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    },
+    {
+      "episode_id": 49,
+      "length": 319,
+      "action_dim": 14,
+      "video_decoded_frames": 320,
+      "trajectory_sha256": "58b6725395a1dfd58e364378a92e8fb41e184f979a5c08e1b7fbe325547a26a2",
+      "action_next_state_max_error": 0.0,
+      "all_raw_images_decodable": true,
+      "processed_rgb_sample_error": 0
+    }
+  ],
+  "total_episodes": 50,
+  "total_frames": 15691,
+  "counts": {
+    "train": {
+      "LL": 10,
+      "RL": 10,
+      "LR": 10,
+      "RR": 10
+    },
+    "validation": {
+      "LR": 2,
+      "RL": 2,
+      "RR": 3,
+      "LL": 3
+    }
+  },
+  "original_dataset_preserved": true,
+  "duplicate_trajectories": 0,
+  "loader_verified": true,
+  "normalization_uses_train_only": true,
+  "training_started": false,
+  "processed_dir": "${ROBOTWIN_ROOT}/XPolicyLab/policy/ACT/processed_data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex-joint",
+  "split_file": "${ROBOTWIN_ROOT}/data/demo_train50_wrist_v2/split_40_10.json",
+  "bench_name": "demo_train50_wrist_v2",
+  "task_config": "demo_train50_wrist_v2",
+  "task_config_path": "${ROBOTWIN_ROOT}/env_cfg/task_config/demo_train50_wrist_v2.yml",
+  "camera_mount": {
+    "position": [
+      -0.14,
+      0,
+      0.22
+    ],
+    "rpy_deg": [
+      0,
+      55,
+      0
+    ]
+  },
+  "original_action_execution_interval_changed": false
+}
