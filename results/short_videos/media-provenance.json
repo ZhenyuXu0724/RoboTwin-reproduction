@@ -1,0 +1,25 @@
+{
+  "transcode": "480px wide,10FPS,H264 CRF30,no audio; complete timeline",
+  "files": [
+    {
+      "file": "expert-episode0-preview.mp4",
+      "source": "${ROBOTWIN_ROOT}/data/demo_train50_wrist_v2/stack_blocks_two/aloha_agilex/video/episode_0000000.mp4",
+      "source_sha256": "4f535bbebb628e9ba47cecea2fe206d42b1ff60140c062105c96f16b0ce2ef00",
+      "source_duration_seconds": 10.266667,
+      "export_sha256": "a037c881b5a00f5579de40bdd2da8b98804542a8c5585b13d0be492018d21df1",
+      "export_bytes": 188467,
+      "export_duration_seconds": 10.3,
+      "scope": "expert demo"
+    },
+    {
+      "file": "historical-act-rgbd-seed700000.mp4",
+      "source": "${ROBOTWIN_ROOT}/data/demo_train50_wrist_v2/repaired_train2000_20261006_191143/visual_guard_test20_20261006_231054/seed700000/episode.mp4",
+      "source_sha256": "6cfb1b920cdb237cebf6becdaaeb76613bfd9fb3bb139939c28643656d2c00d9",
+      "source_duration_seconds": 21.2,
+      "export_sha256": "2f5ee175e3a9ac28a3fd18740c6d11dd0cce2b2a8a14845b8b9dd3cfc66ea558",
+      "export_bytes": 339625,
+      "export_duration_seconds": 21.2,
+      "scope": "historical seed700000; not current paired-test video"
+    }
+  ]
+}
