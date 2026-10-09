@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "recorded_on": "2026-10-08",
+  "recorded_on": "2026-10-09",
   "scope": "repository material snapshot excluding .git and this manifest",
   "files": {
     ".github/pull_request_template.md": {
@@ -20,8 +20,8 @@
       "sha256": "0d51d19c6a31677dbd7dfc5d054c8768fb5d9213c1e3cffefcc8f7daa4ba1063"
     },
     "README.md": {
-      "bytes": 3941,
-      "sha256": "ec7236dc225133b3049d781c126d9d42ec4351c3652cbf1b26d6b0ea588c1969"
+      "bytes": 4556,
+      "sha256": "b0f0f99c2cb6bb9209811db7e2c7f317012b1115b6f0beed865c4594bfcb6eb7"
     },
     "configs/demo_smoke.yml": {
       "bytes": 890,
@@ -50,6 +50,10 @@
     "docs/troubleshooting.md": {
       "bytes": 947,
       "sha256": "08456048c994f0e3d64a338285fbc0c1f4114c5ef4c564e563d1dd0431bf2495"
+    },
+    "docx/robotwin-reproduction-report.md": {
+      "bytes": 22706,
+      "sha256": "db14428a5f678751d9ede8225f810111338d538b1ab5fac0613f677591802de9"
     },
     "experiments/2026-09-30-act-stack-blocks/README.md": {
       "bytes": 1396,
