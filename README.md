@@ -2,7 +2,13 @@
 
 RoboTwin 双臂堆叠任务的复现与实验分析：从专家数据采集、ACT 实现修复和策略训练，到 ACT 与 Diffusion Policy 对照、RGB-D 纠偏及组件消融。
 
-先读 [项目材料总索引](PROJECT_MATERIALS.md)，再进入 [最终实验材料](experiments/2026-10-08-policy-comparison/README.md)。本仓库保存代码、配置和证据；技术报告后续单独撰写。
+## 技术报告
+
+**推荐先阅读 [复现技术报告初稿](docx/robotwin-reproduction-report.md)**：系统梳理项目目标、数据采集、ACT 实现修复、RGB-D 纠偏方法、ACT 与 DP 配对实验、释放分支消融及误差分析，并说明结论边界与后续工作。
+
+报告中的 19/20 成功率属于 **ACT 加外部 RGB-D 纠偏的组合系统**；纯 ACT 为 3/20。报告区分实测结果与待验证解释，未将系统效果归为纯策略性能或算法总体排名。
+
+查阅具体证据可继续进入 [项目材料总索引](PROJECT_MATERIALS.md) 和 [最终实验材料](experiments/2026-10-08-policy-comparison/README.md)。
 
 ## 当前结果
 
@@ -24,6 +30,7 @@ RoboTwin 双臂堆叠任务的复现与实验分析：从专家数据采集、AC
 
 | 材料 | 入口 |
 | --- | --- |
+| 复现全过程与技术分析 | [技术报告初稿](docx/robotwin-reproduction-report.md) |
 | 项目流程与证据关系 | [PROJECT_MATERIALS.md](PROJECT_MATERIALS.md) |
 | 当前结果、配置和原始评分 | [最终材料目录](experiments/2026-10-08-policy-comparison/README.md) |
 | 代码恢复与运行入口 | [复现说明](docs/materials-reproduction.md) |
@@ -56,4 +63,4 @@ python scripts/verify_materials.py
 
 Git 保存轻量代码、配置、结果和明确标注来源的展示媒体。原始演示、处理数据、模型权重和完整历史日志/视频仍在本地，尚无公开下载地址，因此当前是可检查的实验归档，完整重跑仍需准备环境与大文件。
 
-独立技术报告将在后续撰写。当前结果仅覆盖仿真中的已知方块任务，未验证真实机器人、多任务泛化和长期释放稳定性。
+技术报告初稿已整理为 [Markdown 文档](docx/robotwin-reproduction-report.md)，位于 `docx/` 目录。当前结果仅覆盖仿真中的已知方块任务，未验证真实机器人、多任务泛化和长期释放稳定性。
