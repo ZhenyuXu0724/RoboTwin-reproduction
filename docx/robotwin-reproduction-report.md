@@ -193,7 +193,7 @@ DP 验证关键状态的关节误差从执行序列首步约 0.03875 rad 增至�
 
 ## 附录 A 复现材料与版本
 
-材料仓库：https://github.com/ZhenyuXu0724/RoboTwin-reproduction。总索引为 [PROJECT_MATERIALS.md](../PROJECT_MATERIALS.md)；正式比较、DP 诊断和 ACT 消融位于 experiments/2026-10-08-policy-comparison，分别对应 [FOUR_WAY_COMPARISON.md](../experiments/2026-10-08-policy-comparison/FOUR_WAY_COMPARISON.md)、[DP_FAILURE_DIAGNOSIS.md](../experiments/2026-10-08-policy-comparison/DP_FAILURE_DIAGNOSIS.md) 和 [ACT_ABLATION.md](../experiments/2026-10-08-policy-comparison/ACT_ABLATION.md)。此前开发记录保留在其他按日期命名的实验目录，阅读时应区分数据版本和种子组。
+材料仓库：[RoboTwin-reproduction](https://github.com/ZhenyuXu0724/RoboTwin-reproduction)。总索引为 [PROJECT_MATERIALS.md](../PROJECT_MATERIALS.md)；正式比较、DP 诊断和 ACT 消融位于 experiments/2026-10-08-policy-comparison，分别对应 [FOUR_WAY_COMPARISON.md](../experiments/2026-10-08-policy-comparison/FOUR_WAY_COMPARISON.md)、[DP_FAILURE_DIAGNOSIS.md](../experiments/2026-10-08-policy-comparison/DP_FAILURE_DIAGNOSIS.md) 和 [ACT_ABLATION.md](../experiments/2026-10-08-policy-comparison/ACT_ABLATION.md)。此前开发记录保留在其他按日期命名的实验目录，阅读时应区分数据版本和种子组。
 
 本地材料包为 data/project_materials_20261008，归档为 data/robotwin-project-materials-20261008.zip。完整训练数据、处理缓存和权重保存在本地，通过材料索引和权重注册表追踪；公开仓库不包含所有大文件。正式 100 条评测结果具有逐例记录，但未配套导出全部视频，现有展示视频主要来自专家轨迹及历史案例。
 
